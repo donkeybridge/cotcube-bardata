@@ -11,6 +11,10 @@ require 'zip'
 
 require_relative 'cotcube-bardata/constants'
 require_relative 'cotcube-bardata/init'
+require_relative 'cotcube-bardata/trade_dates'
+require_relative 'cotcube-bardata/daily'
+#require_relative 'cotcube-bardata/quarters'
+require_relative 'cotcube-bardata/eods'
 require_relative 'cotcube-bardata/provide'
 
 private_files = Dir[__dir__ + '/cotcube-bardata/private/*.rb']
@@ -25,8 +29,12 @@ module Cotcube
     module_function :config_path, # provides the path of configuration directory
       :config_prefix,             # provides the prefix of the configuration directory according to OS-specific FSH
       :init,                      # checks whether environment is prepared and returns the config hash
-      :provide,
-      :continuous,
+      :last_trade_date,           # Provides the most recent trade date (today or maybe last friday before weekend)
+      :provide,                   # 
+      :provide_daily,
+      :most_liquid_for,           # the most_liquid contract for a given symbol or id, based on date or last_trade_date
+      :provide_eods,              # provides a list of eods, either with data or just contracts
+      :continuous,                
       :continuous_overview,
 
       :symbols                    # reads and provides the symbols file
