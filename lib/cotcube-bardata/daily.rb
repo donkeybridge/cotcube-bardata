@@ -4,7 +4,7 @@ module Cotcube
   module Bardata
 
     # just reads bardata/daily/<id>/<contract>.csv
-    def provide_daily(symbol: nil, id: nil, contract:, config: init)
+    def provide_daily(symbol: nil, id: nil, contract:, timezone: Time.find_zone('America/Chicago'), config: init)
       contract = contract.to_s.upcase
       raise ArgumentError, "Contract '#{contract}' is bogus, should be like 'M21' or 'ESM21'" unless contract.is_a? String and [3,5].include? contract.size
       if contract.to_s.size == 5
@@ -28,6 +28,7 @@ module Cotcube
           row[k] = row[k].to_f if [:open, :high, :low, :close].include? k
           row[k] = row[k].to_i if [:volume, :oi].include? k
         end
+        row[:datetime] = timezone.parse(row[:date])
         row
       end
       data
