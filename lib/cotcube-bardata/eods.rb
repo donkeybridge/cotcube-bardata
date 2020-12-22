@@ -3,7 +3,7 @@
 module Cotcube
   module Bardata
 
-    def most_liquid_for(symbol: nil, id: nil, date: last_trade_date, config: init)
+    def most_liquid_for(symbol: nil, id: nil, date: last_trade_date, config: init, quiet: false)
       unless symbol.nil?
         symbol_id = symbols.select{|s| s[:symbol] == symbol.to_s.upcase}.first[:id]
         raise ArgumentError, "Could not find match in #{config[:symbols_file]} for given symbol #{symbol}" if symbol_id.nil?
@@ -52,7 +52,10 @@ module Cotcube
         id_path    = id_path_get.call(i)
         data_file  = "#{id_path}/#{d}.csv"
         raise RuntimeError, "No data found for requested :id (#{id_path} does not exist)" unless Dir.exist?(id_path)
-        raise RuntimeError, "No data found for requested contract #{symbol}:#{contract} in #{id_path}." unless File.exist?(data_file)
+        unless File.exist?(data_file)
+          puts "WARNING: No data found for requested id/symbol #{id}/#{symbol} in #{id_path}.".light_yellow unless quiet
+          return []
+        end
         data = CSV.read(data_file, headers: %i[contract date open high low close volume oi] ).map do |row|
           row = row.to_h
           row.each do |k, _| 
