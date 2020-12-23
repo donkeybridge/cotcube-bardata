@@ -14,14 +14,30 @@ module Cotcube
       provide_eods(id: id, dates: date, contracts_only: true).first
     end
 
-
+    def provide_most_liquids_by_eod(config: init, date: last_trade_date, filter: :volume_part, age: 1.hour)
+      eods = provide_eods(config: config, dates: date, filter: filter)
+      result = [] 
+      eods.map do |eod|
+        symbol   = eod[0..1]
+        contract = eod[2..4] 
+        sym      = symbols.select{|s| s[:symbol] == symbol.to_s.upcase}.first
+        quarter  = "#{config[:data_path]}/quarters/#{sym[:id]}/#{contract}.csv"
+        if File.exist?(quarter)
+          puts "#{quarter}: #{ Time.now } - #{File.mtime(quarter)} > #{age} : #{Time.now - File.mtime(quarter) > age}"
+          result << eod if Time.now - File.mtime(quarter) > age
+        else
+          result << eod
+        end
+      end
+      result
+    end
 
     def provide_eods(symbol: nil, 
                      id: nil, 
                      contract: nil, 
                      config: init, 
                      dates: last_trade_date,   # should accept either a date or datelike or date string OR a range of 2 datelike
-                                               # if omitted returns the eods of last trading date
+                     # if omitted returns the eods of last trading date
                      threshold: 0.1,           # set threshold to 0 to disable filtering at all. otherwise only contracts with partial of >= threshold are returned
                      filter: :volume_part,     # filter can be set to volume_part and oi_part. determines, which property is used for filtering.
                      contracts_only: true      # set to false to return the complete row instead of just the contracts matching filter and threshold

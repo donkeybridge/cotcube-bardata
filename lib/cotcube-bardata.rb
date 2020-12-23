@@ -30,6 +30,7 @@ module Cotcube
       :provide,                   # 
       :most_liquid_for,           # the most_liquid contract for a given symbol or id, based on date or last_trade_date
       :provide_eods,              # provides the list of eods, either with data or just the contracts, filtered for liquidity threshold
+      :provide_most_liquids_by_eod,
       :provide_daily,             # provides the list of dailies for a given symbol, which include OI. Note that the close is settlement price.
       :continuous,                # for a given date or range, provide all contracts that exceed a given threshold of volume share
       :continuous_overview,       # based on continuous, create list of when which contract was most liquid
