@@ -4,7 +4,7 @@ module Cotcube
   module Bardata
 
 
-    def symbols(config: init)
+    def symbols(config: init, type: nil)
       if config[:symbols_file].nil?
         SYMBOL_EXAMPLES
       else
@@ -13,6 +13,7 @@ module Cotcube
           .map{|row| row.to_h }
           .map{|row| [ :ticksize, :power, :bcf ].each {|z| row[z] = row[z].to_f}; row }
           .reject{|row| row[:id].nil? }
+          .tap{|all| all.select!{|x| x[:type] == type} unless type.nil? }
       end
     end
 
