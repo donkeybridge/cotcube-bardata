@@ -1,3 +1,8 @@
+## 0.1.3 (December 23, 2020)
+  - added .provide_most_liquids_by_eod which supports :age, filtering out files that have been updated more recently
+  - added 'type' to symbols to filter for e.g. currencies
+  - changed .provide_eods not to raise on missing eod-file but just to WARN
+
 ## 0.1.2 (December 22, 2020)
   - created and added .provide_quarters
   - added cotcube-helpers as new dependency to gempsec
