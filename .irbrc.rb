@@ -1,5 +1,7 @@
+# frozen_string_literal: true
+
 def verbose_toggle
-  irb_context.echo ? irb_context.echo = false : irb_context.echo = true
+  irb_context.echo = (irb_context.echo ? false : true)
 end
 
 alias vt verbose_toggle
