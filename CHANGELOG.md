@@ -1,3 +1,25 @@
+## 0.1.4 (January 02, 2021)
+  - two minor fixes (cached.rb, daily.rb)
+  - adding first (shy) specs ... to be continued
+  - cotcube-bardata.rb: added dependency parallel, added new module files and functions
+  - provide.rb: writing provide, the central accessor to actual bardata
+  - cached.rb: implementing 'provide_cached', which manages reduced and dimished subsets of 'quarters'
+  - helpers.rb: added get_id_set
+  - daily.rb: applied cops
+  - quarters.rb: applied cops, used new get_id_set, slimmed down content in favor of 'provide'
+  - eods.rb: renamed get_id_from to get_id_set
+  - added explanation to range_matrix.rb
+  - added 'holidays' to trade_dates.csv, depending on according CSV
+  - applied cops to init.rb
+  - changed name from get_range to trading_hours
+  - minor change in gemspec
+  - fixed typos in README
+  - added bounded versions to gemspec
+  - applied cops
+  - new file trading_hours.rb providing get_range(). Based on CSV data it provides a list of ranges depicting seconds since Sunday 0:00am, which in turn can be used with the helper Array.new.to_time_interval.
+  - new file and method 'range_matrix', investigating high-low ranges of entire daily
+  - Too bad, found copied README...fixing something quite embarassing.
+
 ## 0.1.3 (December 23, 2020)
   - added .provide_most_liquids_by_eod which supports :age, filtering out files that have been updated more recently
   - added 'type' to symbols to filter for e.g. currencies
