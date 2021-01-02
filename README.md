@@ -1,8 +1,8 @@
 # cotcube-bardata
 
-This gem is a versatile provider of bardata. It relys on a directory structure most probably saved to `/var/cotcube/bardata/`. The following directories and files contain data others might expect to be delivered by a database:
+This gem is a versatile provider of bardata. It relies on a directory structure most probably saved to `/var/cotcube/bardata/`. The following directories and files contain data others might expect to be delivered by a database:
 
-1. `eods`: within *eods/<id or symbol>/<date>.csv*, for each date a list of contracts is located, to be applicated with the list of headers `%i[ contract date open high low close volume oi ]`.
+1. `eods`: within *eods/<id or symbol>/<date>.csv*, for each date a list of contracts is located, to be applied with the list of headers `%i[ contract date open high low close volume oi ]`.
 2. `daily`: within *daily/<id or symbol>/<contract>.csv*, for each contract all eods are provided. The list of headers is expected as `%i[ contract date open high low close volume oi ]`. Please note that it is not obvious whether `close` contains settlement or actual closing price, depending on the exchange and the broker providing the source data.
 3. `quarters`: within *quarters/<id or symbol>/<contract>.csv*, for each contract a list of quarters (15 minute intervals) is provided, depending on the first occurrence of the contract within the topN volume segment. Note the different headers here: `%i[ contract date_alike day open high low close volume ]`.
 4. `trading_hours`: within *trading_hours/<symbol or type>_<set>.csv* a list of intervals is provided, with the headers `%i[ interval_start interval_end ]` for each interval described by seconds since Sunday 0:00p.m. (as defaulted by Ruby's *DateTime.new.wday)*.
@@ -63,7 +63,7 @@ Provides `range_matrix`, a simple method processing data based on `Bardata.conti
 
 * all available data,
 * a data subset containing the recent 12 months
-* data diminshed by `:dim` (top and bottom) based on all available data
+* data diminished by `:dim` (top and bottom) based on all available data
 
 and contains  *max*, *avg*, *lower*, *median*, *upper* and *max* (where 'upper' and 'lower' are like the median but at the 25percentile and 75percentile resp.).
 
