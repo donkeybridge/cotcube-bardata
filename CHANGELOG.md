@@ -1,3 +1,6 @@
+## 0.1.5 (January 02, 2021)
+  - applied some still missing cops
+
 ## 0.1.4 (January 02, 2021)
   - two minor fixes (cached.rb, daily.rb)
   - adding first (shy) specs ... to be continued
