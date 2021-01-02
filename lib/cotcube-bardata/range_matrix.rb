@@ -3,9 +3,26 @@
 module Cotcube
   # Missing top level documentation
   module Bardata
-    def range_matrix(symbol:, print: false, dim: 0.05)
+    # this is an analysis tool to investigate actual ranges of an underlying symbol
+    # it is in particular no true range or average true range, as a 'true range' can only be applied to
+    # a steady series, what changing contracts definitely aren't
+    #
+    # The result printed / returned is a table, containing a matrix of rows:
+    #   1. size: the amount of values evaluated
+    #   2. avg:
+    #   3. lower: like median, but not at 1/2 but 1/4
+    #   4. median:
+    #   5. upper: like median, bot not at 1/2 but 3/4
+    #   6. max:
+    # and columns:
+    #   1.a) all days os the series
+    #   1.b) all days of the series, diminished by 2* :dim*100% extreme values (i.e. at both ends)
+    #   1.c) the last 200 days
+    #   2.a-c) same with days reduced to weeks (c: 52 weeks)
+    #   3.a-c) same with days reduced to months (c: 12 months)
+    def range_matrix(symbol: nil, id: nil, print: false, dim: 0.05)
       # rubocop:disable Style/MultilineBlockChain
-      sym = Cotcube::Bardata.symbols(symbol: symbol).first
+      sym = get_id_set(symbol: symbol, id: id)
       source = {}
       target = {}
       source[:days]   = Cotcube::Bardata.continuous_actual_ml symbol: symbol
