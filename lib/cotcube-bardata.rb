@@ -11,13 +11,16 @@ require 'date' unless defined?(DateTime)
 require 'csv'  unless defined?(CSV)
 require 'yaml' unless defined?(YAML)
 require 'cotcube-helpers'
+require 'parallel'
 
 require_relative 'cotcube-bardata/constants'
+require_relative 'cotcube-bardata/helpers'
 require_relative 'cotcube-bardata/init'
 require_relative 'cotcube-bardata/trade_dates'
 require_relative 'cotcube-bardata/daily'
 require_relative 'cotcube-bardata/quarters'
 require_relative 'cotcube-bardata/eods'
+require_relative 'cotcube-bardata/cached'
 require_relative 'cotcube-bardata/provide'
 require_relative 'cotcube-bardata/range_matrix'
 require_relative 'cotcube-bardata/trading_hours'
@@ -53,10 +56,14 @@ module Cotcube
                     :provide_quarters,
                     # some statistics to estimate daily volatility of specific contract
                     :range_matrix,
-                    # create an array of ranges based on specifieds source data
-                    :get_range,
+                    # create an array of ranges based on specified source data
+                    :trading_hours,
+                    # receive id / symbol information on an uncertain set of parameters
+                    :get_id_set,
+                    :compare,
+                    :holidays,
                     :symbols # reads and provides the symbols file
 
-    # please not that module_functions of source provided in private files must be published there
+    # please note that module_functions of source provided in private files must be published there
   end
 end
