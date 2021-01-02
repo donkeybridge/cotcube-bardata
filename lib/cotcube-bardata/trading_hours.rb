@@ -3,17 +3,24 @@
 module Cotcube
   # Missing top level comment
   module Bardata
-    def get_range(symbol: nil, set: :full, force_set: false, config: init, debug: false)
+    # returns an Array of ranges containing a week of trading hours, specified by seconds since monday morning
+    #    (as sunday is wday:0)
+    # according files are located in config[:data_path]/trading_hours and picked either
+    # by the symbol itself or by the assigned type
+    # commonly there are two sets for each symbol: :full and :rth, exceptions are e.g. meats
+    def trading_hours(symbol: nil, id: nil,         # rubocop:disable Metrics/ParameterLists
+                      set: :full, force_set: false,
+                      config: init, debug: false)
       return (0...24 * 7 * 3600) if set.to_s =~ /24x7/
 
       prepare = lambda do |f|
         CSV.read(f, converters: :numeric)
            .map(&:to_a)
-           .tap { |x| x.shift unless x.first?.first?.is_a?(Numeric) }
+           .tap { |x| x.shift unless x.first.first.is_a?(Numeric) }
            .map { |x| (x.first...x.last) }
       end
-      sym = symbols(symbol: symbol).first
-      raise ArgumentError, 'Cannot continue without valid :symbol' if symbol.nil? || (sym.is_a?(Array) && sym.empty?)
+
+      sym = get_id_set(symbol: symbol, id: id)
 
       file = "#{config[:data_path]}/trading_hours/#{sym[:symbol]}_#{set}.csv"
       puts "Trying to use #{file} for #{symbol} + #{set}" if debug
