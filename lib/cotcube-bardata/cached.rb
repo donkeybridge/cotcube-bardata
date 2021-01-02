@@ -73,6 +73,7 @@ module Cotcube
           csv << marker
         end
       end
+      base
     end
 
   end
