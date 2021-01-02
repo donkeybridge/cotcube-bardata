@@ -4,7 +4,10 @@ module Cotcube
   # Missing top level documentation comment
   module Bardata
     # just reads bardata/daily/<id>/<contract>.csv
-    def provide_daily(contract:, symbol: nil, id: nil, timezone: Time.find_zone('America/Chicago'), config: init)
+    def provide_daily(contract:,
+                      symbol: nil, id: nil,
+                      timezone: Time.find_zone('America/Chicago'),
+                      config: init)
       contract = contract.to_s.upcase
       unless contract.is_a?(String) && [3, 5].include?(contract.size)
         raise ArgumentError, "Contract '#{contract}' is bogus, should be like 'M21' or 'ESM21'"
@@ -96,6 +99,7 @@ module Cotcube
 
       sym = get_id_set(symbol: symbol, id: id)
       id  = sym[:id]
+      # noinspection RubyNilAnalysis
       data = continuous(id: id, config: config).map do |x|
         {
           date: x[:date],

@@ -15,7 +15,8 @@ module Cotcube
                                     date: last_trade_date,
                                     filter: :volume_part,
                                     age: 1.hour)
-      sym  = get_id_set(symbol: symbol, id: id) if symbol or id
+      sym  = get_id_set(symbol: symbol, id: id) if symbol || id
+      # noinspection RubyScope
       eods = provide_eods(id: sym.nil? ? nil : sym[:id], config: config, dates: date, filter: filter)
       result = []
       eods.map do |eod|

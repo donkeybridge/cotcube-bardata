@@ -79,26 +79,29 @@ module Cotcube
 
     def compare(contract:, format: '%5.2f')
       format = "%#{format}" unless format[0] == '%'
-      daily = provide(contract: contract, type: :daily)
-      full  = provide(contract: contract, type: :days, set: :full)
-      rth   = provide(contract: contract, type: :days, set: :rth)  
-      rth_dates = rth.map{|x| x[:datetime] } 
-      daily.select!{ |x| rth_dates.include? x[:datetime] }
-      full.select!{  |x| rth_dates.include? x[:datetime] }
+      daily = provide(contract: contract, interval: :daily)
+      full  = provide(contract: contract, interval: :days, filter: :full)
+      rth   = provide(contract: contract, interval: :days, filter: :rth)
+      rth_dates = rth.map { |x| x[:datetime] }
+      daily.select! { |x| rth_dates.include? x[:datetime] }
+      full.select! {  |x| rth_dates.include? x[:datetime] }
 
-      printer = lambda {|z| "#{z[:datetime].strftime("%m-%d")
-                          }\t#{format format, z[:open]
-                          }\t#{format format, z[:high]
-                          }\t#{format format, z[:low]
-                          }\t#{format format, z[:close]
-                          }\t#{format '%7d',   z[:volume]}" }
-      daily.each_with_index do |x, i| 
+      printer = lambda { |z|
+           # rubocop:disable Layout/ClosingParenthesisIndentation
+           "#{z[:datetime].strftime('%m-%d') # rubocop:disable Layout/IndentationWidth
+         }\t#{format format, z[:open]
+         }\t#{format format, z[:high]
+         }\t#{format format, z[:low]
+         }\t#{format format, z[:close]
+         }\t#{format '%7d', z[:volume]}"
+        # rubocop:enable Layout/ClosingParenthesisIndentation
+      }
+      daily.each_with_index do |_x, i|
         puts "DAILY #{printer.call daily[i]}"
         puts "FULL  #{printer.call full[i]}"
         puts "RTH   #{printer.call rth[i]}"
-        puts " "
+        puts ' '
       end
-
     end
   end
 end

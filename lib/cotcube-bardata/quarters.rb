@@ -39,6 +39,5 @@ module Cotcube
       data.pop if data.last[:high].zero? && (not keep_marker)
       data
     end
-
   end
 end
