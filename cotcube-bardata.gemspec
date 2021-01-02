@@ -31,8 +31,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'cotcube-helpers',    '~> 0.1'
   spec.add_dependency 'cotcube-indicators', '~> 0.1'
   spec.add_dependency 'httparty',           '~> 0.18'
-  spec.add_dependency 'yaml',               '~> 0.1'
   spec.add_dependency 'parallel',           '~> 1'
+  spec.add_dependency 'yaml',               '~> 0.1'
 
   spec.add_development_dependency 'rake',  '>= 12'
   spec.add_development_dependency 'rspec', '~>3.6'
