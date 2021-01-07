@@ -52,13 +52,13 @@ module Cotcube
       contract_is_marked = data.last[:high].zero?
       data.pop if contract_is_marked
       unless (filter == :full) || (data.size < 3)
-        requested_set = trading_hours(symbol: sym[:symbol], set: filter)
+        requested_set = trading_hours(symbol: sym[:symbol], filter: filter)
         data = data.select_within(ranges: requested_set, attr: :datetime) { |x| x.to_datetime.to_sssm }
       end
 
       base = Cotcube::Helpers.reduce(bars: data, to: :days)
 
-      # remove last day of result if not marked
+      # remove last day of result unless marked
       base.pop unless contract_is_marked || force_recent
 
       base.map do |x|

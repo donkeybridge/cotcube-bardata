@@ -7,11 +7,13 @@ module Cotcube
     #    (as sunday is wday:0)
     # according files are located in config[:data_path]/trading_hours and picked either
     # by the symbol itself or by the assigned type
-    # commonly there are two sets for each symbol: :full and :rth, exceptions are e.g. meats
-    def trading_hours(symbol: nil, id: nil,         # rubocop:disable Metrics/ParameterLists
-                      set: :full, force_set: false,
+    # commonly there are two filter for each symbol: :full and :rth, exceptions are e.g. meats
+    def trading_hours(symbol: nil, id: nil, # rubocop:disable Metrics/ParameterLists
+                      filter: ,
+                      force_filter: false,  # with force_filter one would avoid falling back
+                                            # to the contract_type based range set
                       config: init, debug: false)
-      return (0...24 * 7 * 3600) if set.to_s =~ /24x7/
+      return (0...24 * 7 * 3600) if filter.to_s =~ /24x7/
 
       prepare = lambda do |f|
         CSV.read(f, converters: :numeric)
@@ -22,23 +24,23 @@ module Cotcube
 
       sym = get_id_set(symbol: symbol, id: id)
 
-      file = "#{config[:data_path]}/trading_hours/#{sym[:symbol]}_#{set}.csv"
-      puts "Trying to use #{file} for #{symbol} + #{set}" if debug
+      file = "#{config[:data_path]}/trading_hours/#{sym[:symbol]}_#{filter}.csv"
+      puts "Trying to use #{file} for #{symbol} + #{filter}" if debug
       return prepare.call(file) if File.exist? file
 
       file = "#{config[:data_path]}/trading_hours/#{sym[:symbol]}_full.csv"
       puts "Failed. Trying to use #{file} now" if debug
-      return prepare.call(file) if File.exist?(file) && (not force_set)
+      return prepare.call(file) if File.exist?(file) && (not force_filter)
 
-      file = "#{config[:data_path]}/trading_hours/#{sym[:type]}_#{set}.csv"
+      file = "#{config[:data_path]}/trading_hours/#{sym[:type]}_#{filter}.csv"
       puts "Failed. Trying to use #{file} now." if debug
       return prepare.call(file) if File.exist? file
 
       file = "#{config[:data_path]}/trading_hours/#{sym[:type]}_full.csv"
       puts "Failed. Trying to use #{file} now." if debug
-      return prepare.call(file) if File.exist?(file) && (not force_set)
+      return prepare.call(file) if File.exist?(file) && (not force_filter)
 
-      puts "Finally failed to find range set for #{symbol} + #{set}, returning 24x7"..colorize(:light_yellow)
+      puts "Finally failed to find range filter for #{symbol} + #{filter}, returning 24x7".colorize(:light_yellow)
       (0...24 * 7 * 3600)
     end
   end

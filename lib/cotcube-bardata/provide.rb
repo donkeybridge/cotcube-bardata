@@ -22,7 +22,7 @@ module Cotcube
       when :quarters, :hours, :quarter, :hour
         base = provide_quarters(contract: contract, symbol: symbol, id: id, config: config)
         base = extended_select_for_range(range: range, base: base) if range
-        requested_set = trading_hours(symbol: sym[:symbol], set: filter)
+        requested_set = trading_hours(symbol: sym[:symbol], filter: filter)
 
         base = base.select_within(ranges: requested_set, attr: :datetime) { |x| x.to_datetime.to_sssm }
         return base if %i[quarters quarter].include? interval
