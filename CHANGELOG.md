@@ -1,3 +1,7 @@
+## 0.1.6 (January 07, 2021)
+  - prefering datetime instead date (in helpers and daily)
+  - changed keyword :set to :filter in cached, provide and trading_hours
+
 ## 0.1.5 (January 02, 2021)
   - applied some still missing cops
 
