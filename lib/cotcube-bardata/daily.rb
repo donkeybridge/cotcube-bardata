@@ -28,7 +28,7 @@ module Cotcube
           row[k] = row[k].to_f if %i[open high low close].include? k
           row[k] = row[k].to_i if %i[volume oi].include? k
         end
-        row[:datetime] = timezone.parse(row[:date]).to_date
+        row[:datetime] = timezone.parse(row[:date])
         row[:type]     = :daily
         row
       end

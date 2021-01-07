@@ -60,6 +60,7 @@ module Cotcube
                     :trading_hours,
                     # receive id / symbol information on an uncertain set of parameters
                     :get_id_set,
+                    :provide_cached,
                     :compare,
                     :holidays,
                     :symbols # reads and provides the symbols file

@@ -83,8 +83,8 @@ module Cotcube
       full  = provide(contract: contract, interval: :days, filter: :full)
       rth   = provide(contract: contract, interval: :days, filter: :rth)
       rth_dates = rth.map { |x| x[:datetime] }
-      daily.select! { |x| rth_dates.include? x[:datetime] }
-      full.select! {  |x| rth_dates.include? x[:datetime] }
+      daily.select! { |x| rth_dates.include? x[:datetime].to_datetime }
+      full.select! {  |x| rth_dates.include? x[:datetime].to_datetime }
 
       printer = lambda { |z|
            # rubocop:disable Layout/ClosingParenthesisIndentation
