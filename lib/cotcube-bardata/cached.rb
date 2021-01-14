@@ -6,11 +6,27 @@ module Cotcube
     # send pre-created days based on quarters
     def provide_cached(contract:, # rubocop:disable Metrics/ParameterLists
                        symbol: nil, id: nil,
+                       range: nil,
                        config: init,
                        timezone: Time.find_zone('America/Chicago'),
                        filter: :full, # most probably either :full or :rth
                        force_update: false, # force reloading via provide_quarters
                        force_recent: false) #
+
+      unless range.nil? ||
+             range.is_a?(Range) &&
+             [Date, DateTime, ActiveSupport::TimeWithZone].map do |cl|
+               (range.begin.nil? || range.begin.is_a?(cl)) &&
+               (range.end.nil? || range.end.is_a?(cl))
+             end.reduce(:|)
+        raise ArgumentError, 'Range, if given, must be either (Integer..Integer) or (Timelike..Timelike)'
+      end
+
+      unless range.nil?
+        range_begin = range.begin.nil? ? nil : timezone.parse(range.begin.to_s)
+        range_end   = range.end.nil? ? nil : timezone.parse(range.end.to_s)
+        range = (range_begin..range_end)
+      end
 
       headers = %i[contract datetime open high low close volume]
       sym      = get_id_set(symbol: symbol, id: id, contract: contract)
@@ -33,9 +49,27 @@ module Cotcube
         if base.last[:high].zero?
           # contract exists but is closed (has the CLOSED marker)
           base.pop
-          return base
+          # rubocop:disable Metrics/BlockNesting
+          result = if range.nil?
+                     base
+                   else
+                     base.select do |x|
+                       (range.begin.nil? ? true : x[:datetime] >= range.begin) and
+                         (range.end.nil? ? true : x[:datetime] <= range.end)
+                     end
+                   end
+          return result
         elsif File.mtime(file) < File.mtime(quarters_file)
-          return base
+          result = if range.nil?
+                     base
+                   else
+                     base.select do |x|
+                       (range.begin.nil? ? true : x[:datetime] >= range.begin) and
+                         (range.end.nil? ? true : x[:datetime] <= range.end)
+                     end
+                   end
+          # rubocop:enable Metrics/BlockNesting
+          return result
         else
           puts "File #{file} exists, but is neither closed nor current. Running update.".colorize(:light_green)
         end
@@ -44,7 +78,7 @@ module Cotcube
         data = provide_quarters(contract: contract, id: sym[:id], keep_marker: true)
       rescue StandardError
         puts "Cannot provide quarters for requested contract #{sym[:symbol]}:#{contract},"\
-             "returning '[ ]'".colorize(:light_red)
+            "returning '[ ]'".colorize(:light_red)
         return []
       end
 
@@ -73,7 +107,14 @@ module Cotcube
           csv << marker
         end
       end
-      base
+      if range.nil?
+        base
+      else
+        base.select do |x|
+          (range.begin.nil? ? true : x[:date] >= range.begin) and
+            (range.end.nil? ? true : x[:date] <= range.end)
+        end
+      end
     end
   end
 end

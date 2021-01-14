@@ -4,13 +4,29 @@ module Cotcube
   # Missing top level documentation comment
   module Bardata
     # just reads bardata/daily/<id>/<contract>.csv
-    def provide_daily(contract:,
+    def provide_daily(contract:, # rubocop:disable Metrics/ParameterLists
                       symbol: nil, id: nil,
+                      range: nil,
                       timezone: Time.find_zone('America/Chicago'),
                       config: init)
       contract = contract.to_s.upcase
       unless contract.is_a?(String) && [3, 5].include?(contract.size)
         raise ArgumentError, "Contract '#{contract}' is bogus, should be like 'M21' or 'ESM21'"
+      end
+      unless range.nil? ||
+             (range.is_a?(Range) &&
+             [Date, DateTime, ActiveSupport::TimeWithZone].map do |cl|
+               (range.begin.nil? || range.begin.is_a?(cl)) &&
+               (range.end.nil?   || range.end.is_a?(cl))
+             end.reduce(:|))
+
+        raise ArgumentError, 'Range, if given, must be either (Integer..Integer) or (Timelike..Timelike)'
+      end
+
+      unless range.nil?
+        range_begin = range.begin.nil? ? nil : timezone.parse(range.begin.to_s)
+        range_end   = range.end.nil? ? nil : timezone.parse(range.end.to_s)
+        range = (range_begin..range_end)
       end
 
       sym = get_id_set(symbol: symbol, id: id, contract: contract)
@@ -33,7 +49,14 @@ module Cotcube
         row
       end
       data.pop if data.last[:high].zero?
-      data
+      if range.nil?
+        data
+      else
+        data.select do |x|
+          (range.begin.nil? ? true : x[:datetime] >= range.begin) and
+            (range.end.nil? ? true : x[:datetime] <= range.end)
+        end
+      end
     end
 
     # reads all files in  bardata/daily/<id> and aggregates by date
@@ -119,10 +142,10 @@ module Cotcube
              }\t#{v.last[:date]
              }\t#{format('%4d', (Date.parse(v.last[:date]) - Date.parse(v.first[:date])))
              }\t#{result[k].map do |x|
-                    x[:volume].select do
-                      x[:contract] == k
-                    end
-                  end.size
+               x[:volume].select do
+                 x[:contract] == k
+               end
+             end.size
              }"
           # rubocop:enable Layout/ClosingParenthesisIndentation
         end

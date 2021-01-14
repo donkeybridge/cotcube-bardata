@@ -10,7 +10,7 @@ module Cotcube
                 config: init,
                 # supported types are :quarters, :hours, :days, :rth, :dailies, :weeks, :months
                 interval: :days,
-                # supported filters are :raw, :_24x7_, :full and :rth (and custom named, if provided as file)
+                # supported filters are :full and :rth (and custom named, if provided as file)
                 filter: :full,
                 # TODO: for future compatibility and suggestion: planning to include a function to update
                 #       with live data from broker
@@ -33,16 +33,13 @@ module Cotcube
 
       when :days, :weeks, :months
         base = provide_cached contract: contract, symbol: symbol, id: id, config: config, filter: filter,
-                              force_recent: force_recent
-        base = extended_select_for_range(range: range, base: base) if range
+                              range: range, force_recent: force_recent
         return base if %i[day days].include? interval
 
         # TODO: Missing implementation to reduce cached days to weeks or months
         raise 'Missing implementation to reduce cached days to weeks or months'
       when :dailies, :daily
-        base = provide_daily contract: contract, symbol: symbol, id: id, config: config
-        base = extended_select_for_range(range: range, base: base) if range
-        base
+        provide_daily contract: contract, symbol: symbol, id: id, config: config, range: range
       else
         raise ArgumentError, "Unsupported or unknown interval '#{interval}' in Bardata.provide"
       end
