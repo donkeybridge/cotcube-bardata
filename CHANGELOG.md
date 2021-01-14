@@ -1,3 +1,7 @@
+## 0.1.7 (January 14, 2021)
+  - added :range parameter to :provide, hence to :provide_cached, :provide_daily
+  - added forgotten module_functions
+
 ## 0.1.6 (January 07, 2021)
   - prefering datetime instead date (in helpers and daily)
   - changed keyword :set to :filter in cached, provide and trading_hours
