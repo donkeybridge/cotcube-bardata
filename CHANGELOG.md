@@ -1,3 +1,9 @@
+## 0.1.8 (January 27, 2021)
+  - in helpers, #extended_range_for_date: fixed comparison signs
+  - range_matrix: applied cops, noted appearance of Cotcube::Helpers.simple_series_stats
+  - cached: Fixing wrong comparison sign
+  - daily: slimmed down results for #continuous_overview
+
 ## 0.1.7 (January 14, 2021)
   - added :range parameter to :provide, hence to :provide_cached, :provide_daily
   - added forgotten module_functions
