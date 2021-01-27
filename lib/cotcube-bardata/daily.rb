@@ -132,6 +132,13 @@ module Cotcube
       end
       data.reject! { |x| x[selector].empty? }
       result = data.group_by { |x| x[selector].first[:contract] }
+      result.each_key do |key|
+        result[key].map! do |x|
+          x[:volume].select! { |z| z[:contract] == key }
+          x[:oi].select!     { |z| z[:contract] == key }
+          x
+        end
+      end
       if human
         result.each do |k, v|
           next unless filter.nil? || v.first[selector].first[:contract][2..4] =~ (/#{filter}/)
@@ -151,6 +158,92 @@ module Cotcube
         end
       end
       result
+    end
+
+    def continuous_table(symbol: nil, id: nil,
+                         selector: :volume,
+                         filter: nil,
+                         debug: false)
+      raise ArgumentError, 'Selector must be either :volume or :oi' unless selector.is_a?(Symbol) &&
+                                                                           %i[volume oi].include?(selector)
+
+      sym = get_id_set(symbol: symbol, id: id)
+      if %w[R6 BJ GE].include? sym[:symbol]
+        puts "Rejecting to process symbol '#{sym[:symbol]}'."
+        return
+      end
+      id  = sym[:id]
+      dfm = lambda do |x, y = Date.today.year|
+        k = Date.strptime("#{y} #{x.negative? ? x + 366 : x}", '%Y %j')
+        k -= 1 while [0, 6].include?(k.wday)
+        k.strftime('%a, %Y-%m-%d')
+      rescue StandardError
+        puts "#{sym[:symbol]}\t#{x}\t#{y}"
+      end
+
+      ytoday = Date.today.yday
+      data = continuous_overview(id: id, selector: selector, filter: filter, human: false, config: init)
+             .reject { |k, _| k[-2..].to_i == Date.today.year % 2000 }
+             .group_by { |k, _| k[2] }
+      output_sent = 0
+      data.keys.sort.each do |month|
+        puts "Processing #{sym[:symbol]}#{month}" if debug
+        v0 = data[month]
+        ydays = v0.map { |_, v1| Date.parse(v1.last[:date]).yday }
+        fdays = v0.map { |_, v1| Date.parse(v1.first[:date]).yday }.sort
+        # if the last ml day nears the end of the year, we must fix
+        ydays.map! { |x| x > 350 ? x - 366 : x } if ydays.min < 50
+        fday  = fdays[fdays.size / 2]
+        yavg  = ydays.reduce(:+) / ydays.size
+        # a contract is proposed to use after fday - 1, but before ydays.min (green)
+        # it is warned to user after fday - 1 but before yavg - 1            (red)
+        # it is warned red >= yavg - 1 and <= yavg + 1
+        color = if (ytoday >= yavg - 1) && (ytoday <= yavg + 1)
+                  :light_red
+                elsif (ytoday > ydays.min) && (ytoday < yavg - 1)
+                  :light_yellow
+                elsif (ytoday >= (fday > yavg ? 0 : fday - 5)) && (ytoday <= ydays.min)
+                  :light_green
+                else
+                  :white
+                end
+        if debug || (color != :white)
+          # rubocop:disable Layout/ClosingParenthesisIndentation
+          puts "#{sym[:symbol]
+               }#{month
+             }\t#{format '%12s', sym[:type]
+             }\t#{ytoday
+              }/#{fday
+             }\t#{format '%5d', ydays.min
+             }: #{dfm.call(ydays.min)
+             }\t#{format '%5d', yavg
+             }: #{dfm.call(yavg)
+             }\t#{format '%5d', ydays.max
+             }: #{dfm.call(ydays.max)}".colorize(color)
+          output_sent += 1
+        end
+        next unless debug
+
+        v0.each do |contract, v1|
+          puts "\t#{contract
+               }\t#{v1.first[:date]
+               }\t#{Date.parse(v1.last[:date]).strftime('%a')
+               }, #{v1.last[:date]
+               } (#{Date.parse(v1.last[:date]).yday}"
+          # rubocop:enable Layout/ClosingParenthesisIndentation
+        end
+      end
+      case output_sent
+      when 0
+        puts "WARNING: No output was sent for symbol '#{sym[:symbol]}'.".colorize(:light_yellow)
+      when 1
+        # all ok
+        true
+      else
+        puts "---- #{output_sent} for #{sym[:symbol]} ---------------"
+
+      end
+      nil
     end
   end
 end
