@@ -12,7 +12,7 @@ module Cotcube
     #   2. avg:
     #   3. lower: like median, but not at 1/2 but 1/4
     #   4. median:
-    #   5. upper: like median, bot not at 1/2 but 3/4
+    #   5. upper: like median, but not at 1/2 but 3/4
     #   6. max:
     # and columns:
     #   1.a) all days os the series
@@ -20,6 +20,8 @@ module Cotcube
     #   1.c) the last 200 days
     #   2.a-c) same with days reduced to weeks (c: 52 weeks)
     #   3.a-c) same with days reduced to months (c: 12 months)
+    #
+    # NOTE: there is now a new method Cotcube::Helpers.simple_series_stats, that should be used in favor.
     def range_matrix(symbol: nil, id: nil, print: false, dim: 0.05)
       # rubocop:disable Style/MultilineBlockChain
       sym = get_id_set(symbol: symbol, id: id)
@@ -38,36 +40,43 @@ module Cotcube
         target[period][:all_size]   =  source[period].size
         target[period][:all_avg]    = (source[period].map { |x| x[:range] }.reduce(:+) / source[period].size).round
         target[period][:all_lower]  =  source[period].sort_by do |x|
-                                         x[:range]
-                                       end.map { |x| x[:range] }[ (source[period].size * 1 / 4).round ]
-        target[period][:all_median] =  source[period].sort_by do |x|
-                                         x[:range]
-                                       end.map { |x| x[:range] }[ (source[period].size * 2 / 4).round ]
-        target[period][:all_upper]  =  source[period].sort_by do |x|
-                                         x[:range]
-                                       end.map { |x| x[:range] }[ (source[period].size * 3 / 4).round ]
+          x[:range]
+        end.map { |x| x[:range] }[ (source[period].size * 1 / 4).round ]
+
+        target[period][:all_median] = source[period].sort_by do |x|
+          x[:range]
+        end.map { |x| x[:range] }[ (source[period].size * 2 / 4).round ]
+
+        target[period][:all_upper] = source[period].sort_by do |x|
+          x[:range]
+        end.map { |x| x[:range] }[ (source[period].size * 3 / 4).round ]
+
         target[period][:all_max] = source[period].map { |x| x[:range] }.max
         target[period][:all_records] = source[period].sort_by do |x|
-                                         -x[:range]
-                                       end.map { |x| { contract: x[:contract], range: x[:range] } }.take(5)
+          -x[:range]
+        end.map { |x| { contract: x[:contract], range: x[:range] } }.take(5)
 
         tenth = (source[period].size * dim).round
         custom = source[period].sort_by { |x| x[:range] }[tenth..source[period].size - tenth]
+
         target[period][:dim_size]   =  custom.size
         target[period][:dim_avg]    = (custom.map { |x| x[:range] }.reduce(:+) / custom.size).round
         target[period][:dim_lower]  =  custom.sort_by do |x|
-                                         x[:range]
-                                       end.map { |x| x[:range] }[ (custom.size * 1 / 4).round ]
-        target[period][:dim_median] =  custom.sort_by do |x|
-                                         x[:range]
-                                       end.map { |x| x[:range] }[ (custom.size * 2 / 4).round ]
-        target[period][:dim_upper]  =  custom.sort_by do |x|
-                                         x[:range]
-                                       end.map { |x| x[:range] }[ (custom.size * 3 / 4).round ]
-        target[period][:dim_max]    =  custom.map { |x| x[:range] }.max
+          x[:range]
+        end.map { |x| x[:range] }[ (custom.size * 1 / 4).round ]
+
+        target[period][:dim_median] = custom.sort_by do |x|
+          x[:range]
+        end.map { |x| x[:range] }[ (custom.size * 2 / 4).round ]
+
+        target[period][:dim_upper] = custom.sort_by do |x|
+          x[:range]
+        end.map { |x| x[:range] }[ (custom.size * 3 / 4).round ]
+
+        target[period][:dim_max] = custom.map { |x| x[:range] }.max
         target[period][:dim_records] = custom.sort_by do |x|
-                                         -x[:range]
-                                       end.map { |x| { contract: x[:contract], range: x[:range] } }.take(5)
+          -x[:range]
+        end.map { |x| { contract: x[:contract], range: x[:range] } }.take(5)
 
         range = case period
                 when :months
@@ -83,18 +92,18 @@ module Cotcube
         target[period][:rec_size]   =  custom.size
         target[period][:rec_avg]    = (custom.map { |x| x[:range] }.reduce(:+) / custom.size).round
         target[period][:rec_lower]  =  custom.sort_by do |x|
-                                         x[:range]
-                                       end.map { |x| x[:range] }[ (custom.size * 1 / 4).round ]
-        target[period][:rec_median] =  custom.sort_by do |x|
-                                         x[:range]
-                                       end.map { |x| x[:range] }[ (custom.size * 2 / 4).round ]
-        target[period][:rec_upper]  =  custom.sort_by do |x|
-                                         x[:range]
-                                       end.map { |x| x[:range] }[ (custom.size * 3 / 4).round ]
-        target[period][:rec_max]    =  custom.map { |x| x[:range] }.max
+          x[:range]
+        end.map { |x| x[:range] }[ (custom.size * 1 / 4).round ]
+        target[period][:rec_median] = custom.sort_by do |x|
+          x[:range]
+        end.map { |x| x[:range] }[ (custom.size * 2 / 4).round ]
+        target[period][:rec_upper] = custom.sort_by do |x|
+          x[:range]
+        end.map { |x| x[:range] }[ (custom.size * 3 / 4).round ]
+        target[period][:rec_max] = custom.map { |x| x[:range] }.max
         target[period][:rec_records] = custom.sort_by do |x|
-                                         -x[:range]
-                                       end.map { |x| { contract: x[:contract], range: x[:range] } }.take(5)
+          -x[:range]
+        end.map { |x| { contract: x[:contract], range: x[:range] } }.take(5)
       end
 
       if print
