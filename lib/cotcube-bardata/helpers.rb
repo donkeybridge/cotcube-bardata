@@ -36,11 +36,11 @@ module Cotcube
             ' is assumed (starting 5 pm CT yesterday, ending 4 pm CT today)'.colorize(:light_yellow)
         end
         result = select_specific_date(date: starting, base: base)
-        result += base.select { |d| d[:datetime] > starting and d[:datetime] < ending.to_date }
+        result += base.select { |d| d[:datetime] >= starting and d[:datetime] < ending.to_date }
         result += select_specific_date(date: ending, base: base)
         result.uniq!
       else
-        result = base.select { |x| x[:datetime] >= starting and x[:datetime] < ending }
+        result = base.select { |x| x[:datetime] >= starting and x[:datetime] <= ending }
       end
       result
     end
