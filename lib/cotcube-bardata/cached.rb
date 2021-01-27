@@ -59,7 +59,9 @@ module Cotcube
                      end
                    end
           return result
-        elsif File.mtime(file) < File.mtime(quarters_file)
+        elsif File.mtime(file) + 1.day > File.mtime(quarters_file)
+          puts "CACHE #{File.mtime(file)}\t#{file}"
+          puts "QUART #{File.mtime(quarters_file)}\t#{quarters_file}"
           result = if range.nil?
                      base
                    else
@@ -71,7 +73,9 @@ module Cotcube
           # rubocop:enable Metrics/BlockNesting
           return result
         else
-          puts "File #{file} exists, but is neither closed nor current. Running update.".colorize(:light_green)
+          # write a (positive warning, that the cache needs to be updated, as cached value is older
+          #   than one day but not closed
+          puts "File #{file} exists, but is neither closed nor current. Running update...".colorize(:light_green)
         end
       end
       begin
