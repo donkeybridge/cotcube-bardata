@@ -8,6 +8,7 @@ module Cotcube
                        symbol: nil, id: nil,
                        range: nil,
                        config: init,
+                       debug: false,
                        timezone: Time.find_zone('America/Chicago'),
                        filter: :full, # most probably either :full or :rth
                        force_update: false, # force reloading via provide_quarters
@@ -60,8 +61,8 @@ module Cotcube
                    end
           return result
         elsif File.mtime(file) + 1.day > File.mtime(quarters_file)
-          puts "CACHE #{File.mtime(file)}\t#{file}"
-          puts "QUART #{File.mtime(quarters_file)}\t#{quarters_file}"
+          puts "CACHE #{File.mtime(file)}\t#{file}" if debug
+          puts "QUART #{File.mtime(quarters_file)}\t#{quarters_file}" if debug
           result = if range.nil?
                      base
                    else
