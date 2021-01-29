@@ -40,6 +40,11 @@ module Cotcube
         raise 'Missing implementation to reduce cached days to weeks or months'
       when :dailies, :daily
         provide_daily contract: contract, symbol: symbol, id: id, config: config, range: range
+      when :synth, :synthetic, :synthetic_days
+        days = provide_cached contract: contract, symbol: symbol, id: id, config: config, filter: filter,
+                              range: range, force_recent: force_recent
+        dailies = provide_daily contract: contract, symbol: symbol, id: id, config: config, range: range
+        dailies[..-2] + days.select { |d| d[:datetime] > dailies[-2][:datetime] }
       else
         raise ArgumentError, "Unsupported or unknown interval '#{interval}' in Bardata.provide"
       end
