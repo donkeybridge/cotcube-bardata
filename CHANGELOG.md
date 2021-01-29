@@ -1,3 +1,8 @@
+## 0.1.9.1 (January 29, 2021)
+  - provide: added new interval 'synth', mixing available dailies with synthetic days based on quarters
+  - minor change / cleanup
+  - setting gemspec to use rake 13 and changing version spec to overcome warnings
+
 ## 0.1.8 (January 27, 2021)
   - in helpers, #extended_range_for_date: fixed comparison signs
   - range_matrix: applied cops, noted appearance of Cotcube::Helpers.simple_series_stats
