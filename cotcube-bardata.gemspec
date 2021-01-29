@@ -34,7 +34,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'parallel',           '~> 1'
   spec.add_dependency 'yaml',               '~> 0.1'
 
-  spec.add_development_dependency 'rake',  '>= 12'
+  # using ~> in favor of >= to overcome warning
+  spec.add_development_dependency 'rake',  '~> 13'
   spec.add_development_dependency 'rspec', '~>3.6'
-  spec.add_development_dependency 'yard', '~>0.9'
+  spec.add_development_dependency 'yard',  '~>0.9'
 end
