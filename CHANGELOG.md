@@ -1,3 +1,7 @@
+## 0.1.9.2 (February 07, 2021)
+  - minor changes
+  - daily#continuous_table: introducing debuglevel
+
 ## 0.1.9.1 (January 29, 2021)
   - provide: added new interval 'synth', mixing available dailies with synthetic days based on quarters
   - minor change / cleanup
