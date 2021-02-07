@@ -163,7 +163,13 @@ module Cotcube
     def continuous_table(symbol: nil, id: nil,
                          selector: :volume,
                          filter: nil,
+                         date: Date.today,
+                         debuglevel: 1,
                          debug: false)
+      if debug.is_a?(Integer)
+        debuglevel = debug
+        debug = debuglevel > 0 ? true : false
+      end
       raise ArgumentError, 'Selector must be either :volume or :oi' unless selector.is_a?(Symbol) &&
                                                                            %i[volume oi].include?(selector)
 
@@ -173,7 +179,7 @@ module Cotcube
         return
       end
       id  = sym[:id]
-      dfm = lambda do |x, y = Date.today.year|
+      dfm = lambda do |x, y = date.year|
         k = Date.strptime("#{y} #{x.negative? ? x + 366 : x}", '%Y %j')
         k -= 1 while [0, 6].include?(k.wday)
         k.strftime('%a, %Y-%m-%d')
@@ -181,13 +187,14 @@ module Cotcube
         puts "#{sym[:symbol]}\t#{x}\t#{y}"
       end
 
-      ytoday = Date.today.yday
+      ytoday = date.yday
       data = continuous_overview(id: id, selector: selector, filter: filter, human: false, config: init)
-             .reject { |k, _| k[-2..].to_i == Date.today.year % 2000 }
+        .reject { |k, _| k[-2..].to_i == date.year % 2000 }
              .group_by { |k, _| k[2] }
-      output_sent = 0
+      output_sent = []
+      early_year=nil
       data.keys.sort.each do |month|
-        puts "Processing #{sym[:symbol]}#{month}" if debug
+        puts "Processing #{sym[:symbol]}#{month}" if debuglevel > 1
         v0 = data[month]
         ydays = v0.map { |_, v1| Date.parse(v1.last[:date]).yday }
         fdays = v0.map { |_, v1| Date.parse(v1.first[:date]).yday }.sort
@@ -207,10 +214,9 @@ module Cotcube
                 else
                   :white
                 end
-        if debug || (color != :white)
-          # rubocop:disable Layout/ClosingParenthesisIndentation
-          puts "#{sym[:symbol]
-               }#{month
+        # rubocop:disable Layout/ClosingParenthesisIndentation
+        output = "#{sym[:symbol]
+             }#{month
              }\t#{format '%12s', sym[:type]
              }\t#{ytoday
               }/#{fday
@@ -220,9 +226,12 @@ module Cotcube
              }: #{dfm.call(yavg)
              }\t#{format '%5d', ydays.max
              }: #{dfm.call(ydays.max)}".colorize(color)
-          output_sent += 1
+        if debug || (color != :white)
+          puts output
+          output_sent << "#{sym[:symbol]}#{month}" unless color == :white
         end
-        next unless debug
+        early_year  ||= output
+        next unless (debug and debuglevel >= 2)
 
         v0.each do |contract, v1|
           puts "\t#{contract
@@ -230,12 +239,14 @@ module Cotcube
                }\t#{Date.parse(v1.last[:date]).strftime('%a')
                }, #{v1.last[:date]
                } (#{Date.parse(v1.last[:date]).yday}"
-          # rubocop:enable Layout/ClosingParenthesisIndentation
+               # rubocop:enable Layout/ClosingParenthesisIndentation
         end
       end
-      case output_sent
+      case output_sent.size
       when 0
         puts "WARNING: No output was sent for symbol '#{sym[:symbol]}'.".colorize(:light_yellow)
+        puts "         Assuming late-year-processing.".light_yellow
+        puts early_year.light_green
       when 1
         # all ok
         true
@@ -243,7 +254,7 @@ module Cotcube
         puts "---- #{output_sent} for #{sym[:symbol]} ---------------"
 
       end
-      nil
+      output_sent
     end
   end
 end
