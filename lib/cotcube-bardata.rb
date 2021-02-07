@@ -52,6 +52,8 @@ module Cotcube
                     :continuous_actual_ml,
                     # based on continuous, create list of when which contract was most liquid
                     :continuous_overview,
+                    # provider estimation of current ML usability
+                    :continuous_table,
                     # provide the list of quarters, possibly as hours or days.
                     :provide_quarters,
                     # some statistics to estimate daily volatility of specific contract

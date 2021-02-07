@@ -44,7 +44,11 @@ module Cotcube
         days = provide_cached contract: contract, symbol: symbol, id: id, config: config, filter: filter,
                               range: range, force_recent: force_recent
         dailies = provide_daily contract: contract, symbol: symbol, id: id, config: config, range: range
-        dailies[..-2] + days.select { |d| d[:datetime] > dailies[-2][:datetime] }
+        if days.last[:datetime] > dailies.last[:datetime]
+          dailies[..-2] + days.select { |d| d[:datetime] > dailies[-2][:datetime] }
+        else
+          dailies
+        end
       else
         raise ArgumentError, "Unsupported or unknown interval '#{interval}' in Bardata.provide"
       end
