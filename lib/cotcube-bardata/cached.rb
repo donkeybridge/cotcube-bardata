@@ -98,17 +98,17 @@ module Cotcube
       base = Cotcube::Helpers.reduce(bars: data, to: :days)
 
       # remove last day of result unless marked
-      base.pop unless contract_is_marked || force_recent
+      base.pop if base.last[:datetime].to_date == timezone.now.to_date and not force_recent
 
       base.map do |x|
-        x[:datetime] = x[:datetime].to_date
+        x[:date] = x[:datetime].to_date
         x[:type] = "#{filter}_day".to_sym
         x.delete(:day)
       end
       CSV.open(file, 'w') do |csv|
         base.each { |b| csv << b.values_at(*headers) }
         if contract_is_marked
-          marker = ["#{sym[:symbol]}#{contract}", base.last[:datetime] + 1.day, 0, 0, 0, 0, 0]
+          marker = ["#{sym[:symbol]}#{contract}", base.last[:date] + 1.day, 0, 0, 0, 0, 0]
           csv << marker
         end
       end
