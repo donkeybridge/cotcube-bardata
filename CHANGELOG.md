@@ -1,3 +1,6 @@
+## 0.1.9.3 (February 08, 2021)
+  - cached: minor change fixing problem to get yesterday in rth subsets
+
 ## 0.1.9.2 (February 07, 2021)
   - minor changes
   - daily#continuous_table: introducing debuglevel
