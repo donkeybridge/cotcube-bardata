@@ -61,20 +61,33 @@ module Cotcube
 
     # reads all files in  bardata/daily/<id> and aggregates by date
     # (what is a pre-stage of a continuous based on daily bars)
-    def continuous(symbol: nil, id: nil, config: init, date: nil)
+    def continuous(symbol: nil, id: nil, config: init, date: nil, measure: nil, force_rewrite: false)
+      raise ArgumentError, ':measure, if given, must be a Time object (e.g. Time.now)' unless [NilClass, Time].include? measure.class
+      measuring = lambda {|c| puts "[continuous] Time measured until '#{c}': #{(Time.now.to_f - measure.to_f).round(2)}sec" unless measure.nil? }
+
+      measuring.call("Starting")
       sym = get_id_set(symbol: symbol, id: id)
       id  = sym[:id]
       id_path = "#{config[:data_path]}/daily/#{id}"
-      available_contracts = Dir["#{id_path}/*.csv"].map { |x| x.split('/').last.split('.').first }
-      available_contracts.sort_by! { |x| x[-7] }.sort_by! { |x| x[-6..-5] }
-      data = []
-      available_contracts.each do |c|
-        provide_daily(id: id, config: config, contract: c).each do |x|
-          data << x
-        end
+      c_file  = "#{id_path}/continuous.csv"
+
+      # instead of using the provide_daily methods above, for this bulk operation a 'continuous.csv' is created
+      # this boosts from 4.5sec to 0.3sec
+      if not File.exist?(c_file) or Time.now - File.mtime(c_file) > 8.days or force_rewrite
+        puts "In daily+continuous: Rewriting #{c_file} #{force_rewrite ? "forcibly" : "due to fileage"}.".light_yellow
+        `rm #{c_file}; find #{id_path} | xargs cat 2>/dev/null | grep -v '0,0,0,0' | sort -t, -k2 | cut -d, -f1,2,7,8 > #{c_file}`
       end
+      data = CSV.read(c_file).map do |row|
+        r = { contract: row[0],
+              date:     row[1],
+              volume:   row[2].to_i,
+              oi:       row[3].to_i
+            }
+      end
+
+      measuring.call("Finished retrieving dailies.")
       result = []
-      data.sort_by { |x| x[:date] }.group_by { |x| x[:date] }.map do |k, v|
+      data.group_by { |x| x[:date] }.map do |k, v|
         v.map { |x| x.delete(:date) }
         result << {
           date: k,
@@ -83,6 +96,7 @@ module Cotcube
         }
         result.last[:contracts] = v
       end
+      measuring.call("Finished processing")
       date.nil? ? result : result.select { |x| x[:date] == date }.first
     end
 
@@ -116,20 +130,27 @@ module Cotcube
                             config: init,
                             selector: :volume,
                             human: false,
+                            measure: nil,
                             filter: nil)
-      raise ArgumentError, 'Selector must be either :volume or :oi' unless selector.is_a?(Symbol) &&
-                                                                           %i[volume oi].include?(selector)
 
+      raise ArgumentError, ':measure, if given, must be a Time object (e.g. Time.now)' unless [NilClass, Time].include? measure.class
+      measuring = lambda {|c| puts "[continuous_overview] Time measured until '#{c}': #{(Time.now.to_f - measure.to_f).round(2)}sec" unless measure.nil? }
+
+      raise ArgumentError, 'Selector must be either :volume or :oi' unless selector.is_a?(Symbol) &&
+        %i[volume oi].include?(selector)
+
+      measuring.call("Starting")
       sym = get_id_set(symbol: symbol, id: id)
       id  = sym[:id]
       # noinspection RubyNilAnalysis
-      data = continuous(id: id, config: config).map do |x|
+      data = continuous(id: id, config: config, measure: measure).map do |x|
         {
           date: x[:date],
           volume: x[:contracts].sort_by { |z| - z[:volume] }[0..4].compact.reject { |z| z[:volume].zero? },
           oi: x[:contracts].sort_by { |z| - z[:oi] }[0..4].compact.reject { |z| z[:oi].zero? }
         }
       end
+      measuring.call("Retrieved continuous")
       data.reject! { |x| x[selector].empty? }
       result = data.group_by { |x| x[selector].first[:contract] }
       result.each_key do |key|
@@ -149,14 +170,15 @@ module Cotcube
              }\t#{v.last[:date]
              }\t#{format('%4d', (Date.parse(v.last[:date]) - Date.parse(v.first[:date])))
              }\t#{result[k].map do |x|
-               x[:volume].select do
-                 x[:contract] == k
-               end
-             end.size
+            x[:volume].select do
+              x[:contract] == k
+            end
+          end.size
              }"
           # rubocop:enable Layout/ClosingParenthesisIndentation
         end
       end
+      measuring.call("Finished processing")
       result
     end
 
@@ -164,19 +186,25 @@ module Cotcube
                          selector: :volume,
                          filter: nil,
                          date: Date.today,
+                         measure: nil,
                          debuglevel: 1,
                          debug: false)
       if debug.is_a?(Integer)
         debuglevel = debug
         debug = debuglevel > 0 ? true : false
       end
-      raise ArgumentError, 'Selector must be either :volume or :oi' unless selector.is_a?(Symbol) &&
-                                                                           %i[volume oi].include?(selector)
 
+      raise ArgumentError, ':measure, if given, must be a Time object (e.g. Time.now)' unless [NilClass, Time].include? measure.class
+      measuring = lambda {|c| puts "[continuous_table] Time measured until '#{c}': #{(Time.now.to_f - measure.to_f).round(2)}sec" unless measure.nil? }
+
+      raise ArgumentError, 'Selector must be either :volume or :oi' unless selector.is_a?(Symbol) &&
+        %i[volume oi].include?(selector)
+
+      measuring.call("Entering function")
       sym = get_id_set(symbol: symbol, id: id)
       if %w[R6 BJ GE].include? sym[:symbol]
-        puts "Rejecting to process symbol '#{sym[:symbol]}'."
-        return
+        puts "Rejecting to process symbol '#{sym[:symbol]}'.".light_red
+        return []
       end
       id  = sym[:id]
       dfm = lambda do |x, y = date.year|
@@ -188,9 +216,10 @@ module Cotcube
       end
 
       ytoday = date.yday
-      data = continuous_overview(id: id, selector: selector, filter: filter, human: false, config: init)
+      data = continuous_overview(id: id, selector: selector, filter: filter, human: false, config: init, measure: measure)
         .reject { |k, _| k[-2..].to_i == date.year % 2000 }
-             .group_by { |k, _| k[2] }
+        .group_by { |k, _| k[2] }
+      measuring.call("Retrieved continous_overview")
       output_sent = []
       early_year=nil
       data.keys.sort.each do |month|
@@ -226,21 +255,21 @@ module Cotcube
              }: #{dfm.call(yavg)
              }\t#{format '%5d', ydays.max
              }: #{dfm.call(ydays.max)}".colorize(color)
-        if debug || (color != :white)
-          puts output
-          output_sent << "#{sym[:symbol]}#{month}" unless color == :white
-        end
-        early_year  ||= output
-        next unless (debug and debuglevel >= 2)
+             if debug || (color != :white)
+               puts output
+               output_sent << "#{sym[:symbol]}#{month}" unless color == :white
+             end
+             early_year  ||= output
+             next unless (debug and debuglevel >= 2)
 
-        v0.each do |contract, v1|
-          puts "\t#{contract
+             v0.each do |contract, v1|
+               puts "\t#{contract
                }\t#{v1.first[:date]
                }\t#{Date.parse(v1.last[:date]).strftime('%a')
                }, #{v1.last[:date]
                } (#{Date.parse(v1.last[:date]).yday}"
                # rubocop:enable Layout/ClosingParenthesisIndentation
-        end
+             end
       end
       case output_sent.size
       when 0
@@ -254,6 +283,7 @@ module Cotcube
         puts "---- #{output_sent} for #{sym[:symbol]} ---------------"
 
       end
+      measuring.call("Finished processing")
       output_sent
     end
   end
