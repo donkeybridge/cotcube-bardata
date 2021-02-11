@@ -60,7 +60,7 @@ module Cotcube
                      end
                    end
           return result
-        elsif File.mtime(file) + 1.day > File.mtime(quarters_file)
+        elsif File.mtime(file) - Time.now.beginning_of_day >= 0
           puts "CACHE #{File.mtime(file)}\t#{file}" if debug
           puts "QUART #{File.mtime(quarters_file)}\t#{quarters_file}" if debug
           result = if range.nil?
