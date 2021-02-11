@@ -1,3 +1,7 @@
+## 0.1.10 (February 11, 2021)
+  - Daily.rb: Added measure parameters to continous_suite
+  - cached.rb: Minor fix in comparison
+
 ## 0.1.9.3 (February 08, 2021)
   - cached: minor change fixing problem to get yesterday in rth subsets
 
