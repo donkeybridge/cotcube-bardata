@@ -73,31 +73,38 @@ module Cotcube
 
       # instead of using the provide_daily methods above, for this bulk operation a 'continuous.csv' is created
       # this boosts from 4.5sec to 0.3sec
-      if not File.exist?(c_file) or Time.now - File.mtime(c_file) > 8.days or force_rewrite
+      rewriting = force_rewrite or not(File.exist?(c_file)) or (Time.now - File.mtime(c_file) > 8.days)
+      if rewriting
         puts "In daily+continuous: Rewriting #{c_file} #{force_rewrite ? "forcibly" : "due to fileage"}.".light_yellow
         `rm #{c_file}; find #{id_path} | xargs cat 2>/dev/null | grep -v '0,0,0,0' | sort -t, -k2 | cut -d, -f1,2,7,8 > #{c_file}`
       end
-      data = CSV.read(c_file).map do |row|
-        r = { contract: row[0],
-              date:     row[1],
-              volume:   row[2].to_i,
-              oi:       row[3].to_i
-            }
-      end
+      loading = lambda do
+        data = CSV.read(c_file).map do |row|
+          r = { contract: row[0],
+                date:     row[1],
+                volume:   row[2].to_i,
+                oi:       row[3].to_i
+          }
+        end
 
-      measuring.call("Finished retrieving dailies.")
-      result = []
-      data.group_by { |x| x[:date] }.map do |k, v|
-        v.map { |x| x.delete(:date) }
-        result << {
-          date: k,
-          volume: v.map { |x| x[:volume] }.reduce(:+),
-          oi: v.map { |x| x[:oi] }.reduce(:+)
-        }
-        result.last[:contracts] = v
+        measuring.call("Finished retrieving dailies.")
+        result = []
+        data.group_by { |x| x[:date] }.map do |k, v|
+          v.map { |x| x.delete(:date) }
+          result << {
+            date: k,
+            volume: v.map { |x| x[:volume] }.reduce(:+),
+            oi: v.map { |x| x[:oi] }.reduce(:+)
+          }
+          result.last[:contracts] = v
+        end
+      end
+      constname = "CONTINUOUS_#{symbol}".to_sym
+      if rewriting or not  Cotcube::Bardata.const_defined?( constname)
+        Cotcube::Bardata.const_set constname, loading.call
       end
       measuring.call("Finished processing")
-      date.nil? ? result : result.select { |x| x[:date] == date }.first
+      date.nil? ? Cotcube::Bardata.const_get(constname) : Cotcube::Bardata.const_get(constname).find { |x| x[:date] == date }
     end
 
     def continuous_ml(symbol: nil, id: nil, base: nil)
