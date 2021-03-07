@@ -44,7 +44,7 @@ module Cotcube
         days = provide_cached contract: contract, symbol: symbol, id: id, config: config, filter: filter,
                               range: range, force_recent: force_recent
         dailies = provide_daily contract: contract, symbol: symbol, id: id, config: config, range: range
-        if days.last[:datetime] > dailies.last[:datetime]
+        if days.last[:datetime] > dailies.last[:datetime] rescue false
           dailies[..-2] + days.select { |d| d[:datetime] > dailies[-2][:datetime] }
         else
           dailies
