@@ -1,3 +1,7 @@
+## 0.1.11 (March 07, 2021)
+  - daily.rb: added new technique 'caching in constants' to accelerate computation, also referring to continuous
+  - provide.rb: minor change, so disregarded contracts can be used in swapproximate
+
 ## 0.1.10 (February 11, 2021)
   - Daily.rb: Added measure parameters to continous_suite
   - cached.rb: Minor fix in comparison
