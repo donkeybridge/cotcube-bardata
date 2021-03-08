@@ -98,6 +98,7 @@ module Cotcube
           }
           result.last[:contracts] = v
         end
+        result
       end
       constname = "CONTINUOUS_#{symbol}".to_sym
       if rewriting or not  Cotcube::Bardata.const_defined?( constname)
