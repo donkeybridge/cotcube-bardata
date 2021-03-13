@@ -1,3 +1,7 @@
+## 0.1.12 (March 13, 2021)
+  - range_matrix: adapted to accept block for range provision; added params :days_only and :last_n
+  - minor fix on previous patch
+
 ## 0.1.11 (March 07, 2021)
   - daily.rb: added new technique 'caching in constants' to accelerate computation, also referring to continuous
   - provide.rb: minor change, so disregarded contracts can be used in swapproximate
