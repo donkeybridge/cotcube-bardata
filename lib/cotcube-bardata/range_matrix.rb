@@ -5,7 +5,6 @@ module Cotcube
   module Bardata
     # this is an analysis tool to investigate actual ranges of an underlying symbol
     # it is in particular no true range or average true range, as a 'true range' can only be applied to
-    # a steady series, what changing contracts definitely aren't
     #
     # The result printed / returned is a table, containing a matrix of rows:
     #   1. size: the amount of values evaluated
@@ -22,18 +21,26 @@ module Cotcube
     #   3.a-c) same with days reduced to months (c: 12 months)
     #
     # NOTE: there is now a new method Cotcube::Helpers.simple_series_stats, that should be used in favor.
-    def range_matrix(symbol: nil, id: nil, print: false, dim: 0.05)
+    def range_matrix(symbol: nil, id: nil, base: nil, print: false, dim: 0.05, days_only: false, last_n: 60, &block)
       # rubocop:disable Style/MultilineBlockChain
+      symbol ||= base.last[:contract][0..1] if id.nil?
       sym = get_id_set(symbol: symbol, id: id)
       source = {}
       target = {}
-      source[:days]   = Cotcube::Bardata.continuous_actual_ml symbol: symbol
+      if base.nil?
+        ml = (Cotcube::Bardata.continuous_actual_ml symbol: symbol)&.last[:contract]
+        source[:days]   = Cotcube::Bardata.provide contract: ml
+      else
+        source[:days]   = base
+      end
       source[:weeks]  = Cotcube::Helpers.reduce bars: source[:days], to: :weeks
       source[:months] = Cotcube::Helpers.reduce bars: source[:days], to: :months
 
       %i[days weeks months].each do |period|
+        next if days_only and %i[weeks months].include? period
+        p yield(source[period].first)
         source[period].map! do |x|
-          x[:range] = ((x[:high] - x[:low]) / sym[:ticksize]).round
+          x[:range] = block_given? ? yield(x) : (((x[:high] - x[:low]) / sym[:ticksize]).round)
           x
         end
         target[period] = {}
@@ -80,14 +87,18 @@ module Cotcube
 
         range = case period
                 when :months
-                  -13..-2
+                  -(last_n/15)..-2
                 when :weeks
-                  -53..-2
+                  -(last_n/4)..-2
                 when :days
-                  -200..-1
+                  -last_n..-1
                 else
                   raise ArgumentError, "Unsupported period: '#{period}'"
                 end
+        if range.begin.abs > source[period].size
+          puts "WARNING: requested last_n = #{last_n} exceeds actual size (#{source[period].size}), adjusting...".light_yellow
+          range = (-source[period].size..range.end)
+        end
         custom = source[period][range]
         target[period][:rec_size]   =  custom.size
         target[period][:rec_avg]    = (custom.map { |x| x[:range] }.reduce(:+) / custom.size).round
@@ -110,6 +121,7 @@ module Cotcube
         %w[size avg lower median upper max].each do |a|
           print "#{'%10s' % a} | " # rubocop:disable Style/FormatString
           %i[days weeks months].each do |b|
+            next if days_only and %i[weeks months].include? b
             %w[all dim rec].each do |c|
               print ('%8d' % target[b]["#{c}_#{a}".to_sym]).to_s # rubocop:disable Style/FormatString
             end
