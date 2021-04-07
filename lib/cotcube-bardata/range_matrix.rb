@@ -38,7 +38,6 @@ module Cotcube
 
       %i[days weeks months].each do |period|
         next if days_only and %i[weeks months].include? period
-        p yield(source[period].first)
         source[period].map! do |x|
           x[:range] = block_given? ? yield(x) : (((x[:high] - x[:low]) / sym[:ticksize]).round)
           x

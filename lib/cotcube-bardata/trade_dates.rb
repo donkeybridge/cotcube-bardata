@@ -8,7 +8,7 @@ module Cotcube
     def last_trade_date
       uri = 'https://www.cmegroup.com/CmeWS/mvc/Volume/TradeDates?exchange=CME'
       begin
-        HTTParty.get(uri)
+        HTTParty.get(uri, headers: { "User-Agent" => "Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101 Firefox/81.0"})
                 .parsed_response
                 .map do |x|
                   a = x['tradeDate'].chars.each_slice(2).map(&:join)
