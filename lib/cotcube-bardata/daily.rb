@@ -8,6 +8,7 @@ module Cotcube
                       symbol: nil, id: nil,
                       range: nil,
                       timezone: Time.find_zone('America/Chicago'),
+                      keep_last: false,
                       config: init)
       contract = contract.to_s.upcase
       unless contract.is_a?(String) && [3, 5].include?(contract.size)
@@ -48,7 +49,7 @@ module Cotcube
         row[:type]     = :daily
         row
       end
-      data.pop if data.last[:high].zero?
+      data.pop if data.last[:high].zero? and not keep_last
       if range.nil?
         data
       else
@@ -68,6 +69,7 @@ module Cotcube
       measuring.call("Starting")
       sym = get_id_set(symbol: symbol, id: id)
       id  = sym[:id]
+      symbol = sym[:symbol]
       id_path = "#{config[:data_path]}/daily/#{id}"
       c_file  = "#{id_path}/continuous.csv"
 
@@ -158,7 +160,7 @@ module Cotcube
           oi: x[:contracts].sort_by { |z| - z[:oi] }[0..4].compact.reject { |z| z[:oi].zero? }
         }
       end
-      measuring.call("Retrieved continuous")
+      measuring.call("Retrieved continuous for #{sym[:symbol]}")
       data.reject! { |x| x[selector].empty? }
       result = data.group_by { |x| x[selector].first[:contract] }
       result.each_key do |key|
@@ -194,6 +196,7 @@ module Cotcube
                          selector: :volume,
                          filter: nil,
                          date: Date.today,
+                         short: true,
                          measure: nil,
                          debuglevel: 1,
                          debug: false)
@@ -230,39 +233,47 @@ module Cotcube
       measuring.call("Retrieved continous_overview")
       output_sent = []
       early_year=nil
+      long_output = []
       data.keys.sort.each do |month|
+        current_long = { month: month }
         puts "Processing #{sym[:symbol]}#{month}" if debuglevel > 1
         v0 = data[month]
-        ydays = v0.map { |_, v1| Date.parse(v1.last[:date]).yday }
+        ldays = v0.map { |_, v1| Date.parse(v1.last[:date]).yday }
         fdays = v0.map { |_, v1| Date.parse(v1.first[:date]).yday }.sort
         # if the last ml day nears the end of the year, we must fix
-        ydays.map! { |x| x > 350 ? x - 366 : x } if ydays.min < 50
+        ldays.map! { |x| x > 350 ? x - 366 : x } if ldays.min < 50
         fday  = fdays[fdays.size / 2]
-        yavg  = ydays.reduce(:+) / ydays.size
-        # a contract is proposed to use after fday - 1, but before ydays.min (green)
-        # it is warned to user after fday - 1 but before yavg - 1            (red)
-        # it is warned red >= yavg - 1 and <= yavg + 1
-        color = if (ytoday >= yavg - 1) && (ytoday <= yavg + 1)
+        lavg  = ldays.reduce(:+) / ldays.size
+        # a contract is proposed to use after fday - 1, but before ldays.min (green)
+        # it is warned to user after fday - 1 but before lavg - 1            (red)
+        # it is warned red >= lavg - 1 and <= lavg + 1
+        color = if (ytoday >= lavg - 1) && (ytoday <= lavg + 1)
                   :light_red
-                elsif (ytoday > ydays.min) && (ytoday < yavg - 1)
+                elsif (ytoday > ldays.min) && (ytoday < lavg - 1)
                   :light_yellow
-                elsif (ytoday >= (fday > yavg ? 0 : fday - 5)) && (ytoday <= ydays.min)
+                elsif (ytoday >= (fday > lavg ? 0 : fday - 5)) && (ytoday <= ldays.min)
                   :light_green
                 else
                   :white
                 end
         # rubocop:disable Layout/ClosingParenthesisIndentation
+        long_output << {
+          month:    month,
+          first_ml: fday,
+          last_min: ldays.min,
+          last_avg: lavg,
+          last_max: ldays.max }
         output = "#{sym[:symbol]
              }#{month
              }\t#{format '%12s', sym[:type]
-             }\t#{ytoday
-              }/#{fday
-             }\t#{format '%5d', ydays.min
-             }: #{dfm.call(ydays.min)
-             }\t#{format '%5d', yavg
-             }: #{dfm.call(yavg)
-             }\t#{format '%5d', ydays.max
-             }: #{dfm.call(ydays.max)}".colorize(color)
+             }\ttoday is #{ytoday
+             } -- median of first is #{fday
+             }\tlast ranges from #{format '%5d', ldays.min
+             }: #{dfm.call(ldays.min)
+             }\t#{format '%5d', lavg
+             }: #{dfm.call(lavg)
+             }\tto #{format '%5d', ldays.max
+             }: #{dfm.call(ldays.max)}".colorize(color)
              if debug || (color != :white)
                puts output
                output_sent << "#{sym[:symbol]}#{month}" unless color == :white
@@ -273,12 +284,12 @@ module Cotcube
              v0.each do |contract, v1|
                puts "\t#{contract
                }\t#{v1.first[:date]
-               }\t#{Date.parse(v1.last[:date]).strftime('%a')
-               }, #{v1.last[:date]
-               } (#{Date.parse(v1.last[:date]).yday}"
+               } (#{format '%3d', Date.parse(v1.first[:date]).yday
+              })\t#{Date.parse(v1.last[:date]).strftime('%a, %Y-%m-%d')
+               } (#{Date.parse(v1.last[:date]).yday})"
                # rubocop:enable Layout/ClosingParenthesisIndentation
              end
-      end
+        end
       case output_sent.size
       when 0
         puts "WARNING: No output was sent for symbol '#{sym[:symbol]}'.".colorize(:light_yellow)
@@ -288,11 +299,10 @@ module Cotcube
         # all ok
         true
       else
-        puts "---- #{output_sent} for #{sym[:symbol]} ---------------"
-
+        puts "Continuous table show #{output_sent.size} active contracts ( #{output_sent} ) for #{sym[:symbol]} ---------------"
       end
       measuring.call("Finished processing")
-      output_sent
+      short ? output_sent : long_output
     end
   end
 end
