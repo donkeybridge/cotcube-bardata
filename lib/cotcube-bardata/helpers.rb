@@ -46,6 +46,10 @@ module Cotcube
     end
 
     def get_id_set(symbol: nil, id: nil, contract: nil, config: init)
+      contract = contract.to_s.upcase if contract.is_a? Symbol
+      id       =       id.to_s.upcase if       id.is_a? Symbol
+      symbol   =   symbol.to_s.upcase if   symbol.is_a? Symbol
+
       if contract.is_a?(String) && (contract.length == 5)
         c_symbol = contract[0..1]
         if (not symbol.nil?) && (symbol != c_symbol)
