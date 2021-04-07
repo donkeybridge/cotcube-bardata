@@ -1,3 +1,8 @@
+## 0.1.13 (April 07, 2021)
+  - daily: fixed const_caching in continuous
+  - trade_dates: FIXING call with HTTParty must send Agent Header
+  - helpers/get_id_set: added support for params given as Symbols (:NG instead of 'NG')
+
 ## 0.1.12 (March 13, 2021)
   - range_matrix: adapted to accept block for range provision; added params :days_only and :last_n
   - minor fix on previous patch
