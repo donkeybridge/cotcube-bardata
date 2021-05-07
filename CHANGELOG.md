@@ -1,3 +1,7 @@
+## 0.1.14 (May 07, 2021)
+  - few changes in provide / cached / daily for a more straigtforward forcing of cache renewal
+  - suggest: new method to suggest a contract for given symbol and date
+
 ## 0.1.13 (April 07, 2021)
   - daily: fixed const_caching in continuous
   - trade_dates: FIXING call with HTTParty must send Agent Header
