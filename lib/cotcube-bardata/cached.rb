@@ -12,7 +12,7 @@ module Cotcube
                        timezone: Time.find_zone('America/Chicago'),
                        filter: :full, # most probably either :full or :rth
                        force_update: false, # force reloading via provide_quarters
-                       force_recent: false) #
+                       force_recent: false) # provide base.last even if dayswitch hasn't happen yet
 
       unless range.nil? ||
              range.is_a?(Range) &&
@@ -39,6 +39,8 @@ module Cotcube
       file = "#{dir}/#{contract}.csv"
       quarters_file = "#{config[:data_path]}/quarters/#{sym[:id]}/#{contract[-3..]}.csv"
       if File.exist?(file) && (not force_update)
+        puts "Working with existing #{file}, no update was forced" if debug
+        puts "    Using quarters from #{quarters_file}"
         base = CSV.read(file, headers: headers).map do |x|
           x = x.to_h
           x[:datetime] = timezone.parse(x[:datetime])
@@ -49,7 +51,7 @@ module Cotcube
         end
         if base.last[:high].zero?
           # contract exists but is closed (has the CLOSED marker)
-          base.pop
+          base.pop 
           # rubocop:disable Metrics/BlockNesting
           result = if range.nil?
                      base
@@ -96,8 +98,9 @@ module Cotcube
       end
 
       base = Cotcube::Helpers.reduce(bars: data, to: :days)
+      puts "Reduced base ends at #{bast.last[:datetime].strftime('%Y-%m-%d')}" if debug
 
-      # remove last day of result unless marked
+      # remove last day of result if suspecting incomplete last base 
       base.pop if base.last[:datetime].to_date == timezone.now.to_date and not force_recent
 
       base.map do |x|

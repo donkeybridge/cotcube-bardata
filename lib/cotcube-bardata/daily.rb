@@ -107,7 +107,7 @@ module Cotcube
         Cotcube::Bardata.const_set constname, loading.call
       end
       measuring.call("Finished processing")
-      date.nil? ? Cotcube::Bardata.const_get(constname) : Cotcube::Bardata.const_get(constname).find { |x| x[:date] == date }
+      date.nil? ? Cotcube::Bardata.const_get(constname).map{|z| z.dup } : Cotcube::Bardata.const_get(constname).find { |x| x[:date] == date }
     end
 
     def continuous_ml(symbol: nil, id: nil, base: nil)
@@ -197,6 +197,7 @@ module Cotcube
                          filter: nil,
                          date: Date.today,
                          short: true,
+                         silent: false,
                          measure: nil,
                          debuglevel: 1,
                          debug: false)
@@ -204,6 +205,7 @@ module Cotcube
         debuglevel = debug
         debug = debuglevel > 0 ? true : false
       end
+      silent = false if debug
 
       raise ArgumentError, ':measure, if given, must be a Time object (e.g. Time.now)' unless [NilClass, Time].include? measure.class
       measuring = lambda {|c| puts "[continuous_table] Time measured until '#{c}': #{(Time.now.to_f - measure.to_f).round(2)}sec" unless measure.nil? }
@@ -279,7 +281,7 @@ module Cotcube
                output_sent << "#{sym[:symbol]}#{month}" unless color == :white
              end
              early_year  ||= output
-             next unless (debug and debuglevel >= 2)
+             next if silent or not (debug and debuglevel >= 2) 
 
              v0.each do |contract, v1|
                puts "\t#{contract

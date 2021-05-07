@@ -14,6 +14,7 @@ module Cotcube
                 filter: :full,
                 # TODO: for future compatibility and suggestion: planning to include a function to update
                 #       with live data from broker
+                force_update: false,
                 force_recent: false)
 
       sym = get_id_set(symbol: symbol, id: id, contract: contract, config: config)
@@ -33,7 +34,7 @@ module Cotcube
 
       when :days, :weeks, :months
         base = provide_cached contract: contract, symbol: symbol, id: id, config: config, filter: filter,
-                              range: range, force_recent: force_recent
+                              range: range, force_recent: force_recent, force_update: force_update
         return base if %i[day days].include? interval
 
         # TODO: Missing implementation to reduce cached days to weeks or months
@@ -42,7 +43,7 @@ module Cotcube
         provide_daily contract: contract, symbol: symbol, id: id, config: config, range: range
       when :synth, :synthetic, :synthetic_days
         days = provide_cached contract: contract, symbol: symbol, id: id, config: config, filter: filter,
-                              range: range, force_recent: force_recent
+                              range: range, force_recent: force_recent, force_update: force_update
         dailies = provide_daily contract: contract, symbol: symbol, id: id, config: config, range: range
         if ((days.last[:datetime] > dailies.last[:datetime]) rescue false)
           dailies[..-2] + days.select { |d| d[:datetime] > dailies[-2][:datetime] }
