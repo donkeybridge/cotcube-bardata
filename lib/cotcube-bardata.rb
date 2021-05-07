@@ -22,6 +22,7 @@ require_relative 'cotcube-bardata/quarters'
 require_relative 'cotcube-bardata/eods'
 require_relative 'cotcube-bardata/cached'
 require_relative 'cotcube-bardata/provide'
+require_relative 'cotcube-bardata/suggest'
 require_relative 'cotcube-bardata/range_matrix'
 require_relative 'cotcube-bardata/trading_hours'
 
@@ -61,13 +62,17 @@ module Cotcube
                     # create an array of ranges based on specified source data
                     :trading_hours,
                     # receive id / symbol information on an uncertain set of parameters
+                    # TODO: decommision sppearance of get_id_set and symbols in cotcube::bardata
                     :get_id_set,
+                    :symbols,
+                    #
                     :select_specific_date,
                     :extended_select_for_range,
                     :provide_cached,
+                    :suggest_contract_for,
+                    # 
                     :compare,
-                    :holidays,
-                    :symbols # reads and provides the symbols file
+                    :holidays
 
     # please note that module_functions of source provided in private files must be published there
   end
