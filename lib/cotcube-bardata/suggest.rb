@@ -5,7 +5,7 @@ module Cotcube
   module Bardata
     # based on day(of year) and symbol, suggest best fitting contract
     def suggest_contract_for symbol:, date: Date.today, warnings: true
-      ml = Cotcube::Bardata.continuous_table symbol: symbol, date: date
+      ml = Cotcube::Bardata.continuous_table symbol: symbol, date: date, silent: true
       if ml.size != 1 
 	puts "WARNING: No or no unique most liquid found for #{date}. please give :contract parameter".light_yellow if warnings
 	if ml.size > 1
