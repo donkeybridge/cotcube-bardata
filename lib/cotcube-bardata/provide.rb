@@ -54,5 +54,11 @@ module Cotcube
         raise ArgumentError, "Unsupported or unknown interval '#{interval}' in Bardata.provide"
       end
     end
+
+    def determine_significant_volume(base: , contract: )
+      set  = Cotcube::Bardata.trading_hours(symbol: contract[0..1], filter: :rth)
+      prod = base - base.select_within(ranges: set ,attr: :datetime) {|x| x.to_datetime.to_sssm }
+      prod.group_by{|x| x[:volume] / 500 }
+    end
   end
 end
