@@ -33,6 +33,7 @@ module Cotcube
         %i[open high low close].map { |x| row[x] = row[x].to_f }
         %i[volume day].map { |x| row[x] = row[x].to_i }
         row[:datetime] = timezone.parse(row[:datetime])
+        row[:dist]     = ((row[:high] - row[:low]) / sym[:ticksize] ).to_i
         row[:type]     = :quarter
         row
       end
