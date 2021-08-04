@@ -9,6 +9,7 @@ module Cotcube
                       range: nil,
                       timezone: Time.find_zone('America/Chicago'),
                       keep_last: false,
+                      add_eods: true,
                       config: init)
       contract = contract.to_s.upcase
       unless contract.is_a?(String) && [3, 5].include?(contract.size)
@@ -50,7 +51,25 @@ module Cotcube
         row[:type]     = :daily
         row
       end
-      data.pop if data.last[:high].zero? and not keep_last
+      contract_expired = data.last[:high].zero?
+      data.pop if contract_expired and not keep_last
+      if not contract_expired and add_eods
+        today = Date.today
+        eods = [ ]
+        while today.strftime('%Y-%m-%d') > data.last[:date]
+          eods << provide_eods(symbol: sym[:symbol], dates: today, contracts_only: false)
+          today -= 1
+        end
+        eods.flatten!.map!{|x| x.tap {|y| %i[ volume_part oi_part ].map{|z| y.delete(z)} } }
+        eods.select{|x| x[:contract] == contract } 
+        eods.map!{|x| x.tap{|y| 
+          y[:datetime] = timezone.parse(y[:date])
+          y[:dist]     = ((y[:high] - y[:low]) / sym[:ticksize] ).to_i
+          y[:type]     = :eod
+        } }
+        data += eods.reverse
+
+      end
       if range.nil?
         data
       else
@@ -63,7 +82,7 @@ module Cotcube
 
     # reads all files in  bardata/daily/<id> and aggregates by date
     # (what is a pre-stage of a continuous based on daily bars)
-    def continuous(symbol: nil, id: nil, config: init, date: nil, measure: nil, force_rewrite: false, selector: nil, debug: false)
+    def continuous(symbol: nil, id: nil, config: init, date: nil, measure: nil, force_rewrite: false, selector: nil, debug: false, add_eods: true)
       raise ArgumentError, ':measure, if given, must be a Time object (e.g. Time.now)' unless [NilClass, Time].include? measure.class
       measuring = lambda {|c| puts "[continuous] Time measured until '#{c}': #{(Time.now.to_f - measure.to_f).round(2)}sec" unless measure.nil? }
 
@@ -71,6 +90,7 @@ module Cotcube
       sym = get_id_set(symbol: symbol, id: id)
       id  = sym[:id]
       symbol = sym[:symbol]
+      ticksize = sym[:ticksize] 
       effective_selector = selector || :volume
       raise ArgumentError, 'selector must be in %i[ nil :volume ;oi].' unless [ nil, :volume, :oi ].include? selector
       id_path = "#{config[:data_path]}/daily/#{id}"
@@ -96,45 +116,55 @@ module Cotcube
                 oi:       row[7].to_i
           }
         end
+        if add_eods
+          today = Date.today
+          eods = [ ]
+          while today.strftime('%Y-%m-%d') > data.last[:date]
+            eods << provide_eods(symbol: symbol, dates: today, contracts_only: false)
+            today -= 1
+          end
+          eods.flatten!.map!{|x| x.tap {|y| %i[ volume_part oi_part ].map{|z| y.delete(z)} } }
+          eods.delete_if { |elem|  elem.flatten.empty? }
+          data += eods.reverse
 
+        end
+
+        binding.irb
         measuring.call("Finished retrieving dailies.")
         result = []
         rounding =  8 # sym[:format].split('.').last.to_i rescue 6
-        #bollinger_factor = 1
-        #long = 250
-        #short = 10
         indicators ||= {
-           #typical:     Cotcube::Indicators.calc(a: :high, b: :low, c: :close) {|high, low, close| (high + low + close) / 3 },
-           typical:     Cotcube::Indicators.calc(a: :close) { |close| close },
-           sma250_high: Cotcube::Indicators.sma(key: :high,    length: long),
-           sma250_low:  Cotcube::Indicators.sma(key: :low,     length: long),
-           sma250_typ:  Cotcube::Indicators.sma(key: :typical, length: long), 
-           sma60_typ:   Cotcube::Indicators.sma(key: :typical, length: short),
-           tr:          Cotcube::Indicators.true_range,
-           atr5:        Cotcube::Indicators.sma(key: :tr,    length: 5),
-           dist_abs:    Cotcube::Indicators.calc(a: :sma250_high, b: :sma250_low, c: :high, d: :low) do |sma_high, sma_low, high, low| 
-             if high > sma_high
-               high - sma_high
-             elsif sma_low > low 
-               low - sma_low
-             else 
-               0
-             end
-           end,
-           dist_sma: Cotcube::Indicators.calc(a: :sma250_typ, b: :sma60_typ) do |sma250, sma60|
-             sma60 - sma250
-           end,
-           dist_index:     Cotcube::Indicators.index(key: :dist_abs, length: 60, abs: true),
-           dev250_squared: Cotcube::Indicators.calc(a: :sma250_typ, b: :typical) {|sma, x| (sma - x) ** 2 },
-           var250:         Cotcube::Indicators.sma(key: :dev250_squared, length: long),
-           sig250:         Cotcube::Indicators.calc(a: :var250)                  {|var| Math.sqrt(var)},
-           boll250_high:   Cotcube::Indicators.calc(a: :sig250, b: :sma250_typ)  {|sig, typ| (typ + sig * bollinger_factor) rescue nil},
-           boll250_low:    Cotcube::Indicators.calc(a: :sig250, b: :sma250_typ)  {|sig, typ| (typ - sig * bollinger_factor) rescue nil},
-           dev60_squared:  Cotcube::Indicators.calc(a: :sma60_typ, b: :typical)  {|sma, x| (sma - x) ** 2 },
-           var60:          Cotcube::Indicators.sma(key: :dev60_squared, length: short),
-           sig60:          Cotcube::Indicators.calc(a: :var60)                   {|var| Math.sqrt(var)},
-           boll60_high:    Cotcube::Indicators.calc(a: :sig60, b: :sma60_typ)    {|sig, typ| (typ + sig * bollinger_factor) rescue nil},
-           boll60_low:     Cotcube::Indicators.calc(a: :sig60, b: :sma60_typ)    {|sig, typ| (typ - sig * bollinger_factor) rescue nil}
+          typical:     Cotcube::Indicators.calc(a: :high, b: :low, c: :close) {|high, low, close| (high + low + close) / 3 },
+          sma250_high: Cotcube::Indicators.sma(key: :high,    length: 250),
+          sma250_low:  Cotcube::Indicators.sma(key: :low,     length: 250),
+          sma250_typ:  Cotcube::Indicators.sma(key: :typical, length: 250), 
+          # sma60_typ:   Cotcube::Indicators.sma(key: :typical, length: short),
+          # tr:          Cotcube::Indicators.true_range,
+          # atr5:        Cotcube::Indicators.sma(key: :tr,    length: 5),
+          # dist_abs:    Cotcube::Indicators.calc(a: :sma250_high, b: :sma250_low, c: :high, d: :low) do |sma_high, sma_low, high, low| 
+          #  if high > sma_high
+          #    high - sma_high
+          #  elsif sma_low > low 
+          #    low - sma_low
+          #  else 
+          #    0
+          #  end
+          #end,
+          #dist_sma: Cotcube::Indicators.calc(a: :sma250_typ, b: :sma60_typ) do |sma250, sma60|
+          #  sma60 - sma250
+          #end,
+          #dist_index:     Cotcube::Indicators.index(key: :dist_abs, length: 60, abs: true),
+          #dev250_squared: Cotcube::Indicators.calc(a: :sma250_typ, b: :typical) {|sma, x| (sma - x) ** 2 },
+          #var250:         Cotcube::Indicators.sma(key: :dev250_squared, length: long),
+          #sig250:         Cotcube::Indicators.calc(a: :var250)                  {|var| Math.sqrt(var)},
+          #boll250_high:   Cotcube::Indicators.calc(a: :sig250, b: :sma250_typ)  {|sig, typ| (typ + sig * bollinger_factor) rescue nil},
+          #boll250_low:    Cotcube::Indicators.calc(a: :sig250, b: :sma250_typ)  {|sig, typ| (typ - sig * bollinger_factor) rescue nil},
+          #dev60_squared:  Cotcube::Indicators.calc(a: :sma60_typ, b: :typical)  {|sma, x| (sma - x) ** 2 },
+          #var60:          Cotcube::Indicators.sma(key: :dev60_squared, length: short),
+          #sig60:          Cotcube::Indicators.calc(a: :var60)                   {|var| Math.sqrt(var)},
+          #boll60_high:    Cotcube::Indicators.calc(a: :sig60, b: :sma60_typ)    {|sig, typ| (typ + sig * bollinger_factor) rescue nil},
+          #boll60_low:     Cotcube::Indicators.calc(a: :sig60, b: :sma60_typ)    {|sig, typ| (typ - sig * bollinger_factor) rescue nil}
+          dist: Cotcube::Indicators.calc(a: :high, b: :low, finalize: :to_i) {|high, low| ((high-low) / ticksize) }
 
         }
 
@@ -169,7 +199,9 @@ module Cotcube
       end
       constname = "CONTINUOUS_#{symbol}#{selector.nil? ? '' : ('_' + selector.to_s)}".to_sym
       if rewriting or not  Cotcube::Bardata.const_defined?( constname)
+        old = $VERBOSE; $VERBOSE = nil
         Cotcube::Bardata.const_set constname, loading.call
+        $VERBOSE = old
       end
       measuring.call("Finished processing")
       date.nil? ? Cotcube::Bardata.const_get(constname).map{|z| z.dup } : Cotcube::Bardata.const_get(constname).find { |x| x[:date] == date }
@@ -356,7 +388,7 @@ module Cotcube
                } (#{Date.parse(v1.last[:date]).yday})" unless silent
                # rubocop:enable Layout/ClosingParenthesisIndentation
              end
-        end
+      end
       case output_sent.size
       when 0
         unless silent
