@@ -46,6 +46,7 @@ module Cotcube
           row[k] = row[k].to_i if %i[volume oi].include? k
         end
         row[:datetime] = timezone.parse(row[:date])
+        row[:dist]     = ((row[:high] - row[:low]) / sym[:ticksize] ).to_i
         row[:type]     = :daily
         row
       end
@@ -62,7 +63,7 @@ module Cotcube
 
     # reads all files in  bardata/daily/<id> and aggregates by date
     # (what is a pre-stage of a continuous based on daily bars)
-    def continuous(symbol: nil, id: nil, config: init, date: nil, measure: nil, force_rewrite: false)
+    def continuous(symbol: nil, id: nil, config: init, date: nil, measure: nil, force_rewrite: false, selector: nil, debug: false)
       raise ArgumentError, ':measure, if given, must be a Time object (e.g. Time.now)' unless [NilClass, Time].include? measure.class
       measuring = lambda {|c| puts "[continuous] Time measured until '#{c}': #{(Time.now.to_f - measure.to_f).round(2)}sec" unless measure.nil? }
 
@@ -70,39 +71,103 @@ module Cotcube
       sym = get_id_set(symbol: symbol, id: id)
       id  = sym[:id]
       symbol = sym[:symbol]
+      effective_selector = selector || :volume
+      raise ArgumentError, 'selector must be in %i[ nil :volume ;oi].' unless [ nil, :volume, :oi ].include? selector
       id_path = "#{config[:data_path]}/daily/#{id}"
       c_file  = "#{id_path}/continuous.csv"
+      puts "Using file #{c_file}" if debug
 
       # instead of using the provide_daily methods above, for this bulk operation a 'continuous.csv' is created
       # this boosts from 4.5sec to 0.3sec
       rewriting = force_rewrite or not(File.exist?(c_file)) or (Time.now - File.mtime(c_file) > 8.days)
       if rewriting
         puts "In daily+continuous: Rewriting #{c_file} #{force_rewrite ? "forcibly" : "due to fileage"}.".light_yellow
-        `rm #{c_file}; find #{id_path} | xargs cat 2>/dev/null | grep -v '0,0,0,0' | sort -t, -k2 | cut -d, -f1,2,7,8 > #{c_file}`
+        `rm #{c_file}; find #{id_path} | xargs cat 2>/dev/null | grep -v ',0,' | grep -v ',0$'| sort -t, -k2 | cut -d, -f1-8 | grep ',.*,' | uniq > #{c_file}`
       end
       loading = lambda do
         data = CSV.read(c_file).map do |row|
           r = { contract: row[0],
                 date:     row[1],
-                volume:   row[2].to_i,
-                oi:       row[3].to_i
+                open:     row[2],
+                high:     row[3],
+                low:      row[4],
+                close:    row[5],
+                volume:   row[6].to_i,
+                oi:       row[7].to_i
           }
         end
 
         measuring.call("Finished retrieving dailies.")
         result = []
+        rounding =  8 # sym[:format].split('.').last.to_i rescue 6
+        #bollinger_factor = 1
+        #long = 250
+        #short = 10
+        indicators ||= {
+           #typical:     Cotcube::Indicators.calc(a: :high, b: :low, c: :close) {|high, low, close| (high + low + close) / 3 },
+           typical:     Cotcube::Indicators.calc(a: :close) { |close| close },
+           sma250_high: Cotcube::Indicators.sma(key: :high,    length: long),
+           sma250_low:  Cotcube::Indicators.sma(key: :low,     length: long),
+           sma250_typ:  Cotcube::Indicators.sma(key: :typical, length: long), 
+           sma60_typ:   Cotcube::Indicators.sma(key: :typical, length: short),
+           tr:          Cotcube::Indicators.true_range,
+           atr5:        Cotcube::Indicators.sma(key: :tr,    length: 5),
+           dist_abs:    Cotcube::Indicators.calc(a: :sma250_high, b: :sma250_low, c: :high, d: :low) do |sma_high, sma_low, high, low| 
+             if high > sma_high
+               high - sma_high
+             elsif sma_low > low 
+               low - sma_low
+             else 
+               0
+             end
+           end,
+           dist_sma: Cotcube::Indicators.calc(a: :sma250_typ, b: :sma60_typ) do |sma250, sma60|
+             sma60 - sma250
+           end,
+           dist_index:     Cotcube::Indicators.index(key: :dist_abs, length: 60, abs: true),
+           dev250_squared: Cotcube::Indicators.calc(a: :sma250_typ, b: :typical) {|sma, x| (sma - x) ** 2 },
+           var250:         Cotcube::Indicators.sma(key: :dev250_squared, length: long),
+           sig250:         Cotcube::Indicators.calc(a: :var250)                  {|var| Math.sqrt(var)},
+           boll250_high:   Cotcube::Indicators.calc(a: :sig250, b: :sma250_typ)  {|sig, typ| (typ + sig * bollinger_factor) rescue nil},
+           boll250_low:    Cotcube::Indicators.calc(a: :sig250, b: :sma250_typ)  {|sig, typ| (typ - sig * bollinger_factor) rescue nil},
+           dev60_squared:  Cotcube::Indicators.calc(a: :sma60_typ, b: :typical)  {|sma, x| (sma - x) ** 2 },
+           var60:          Cotcube::Indicators.sma(key: :dev60_squared, length: short),
+           sig60:          Cotcube::Indicators.calc(a: :var60)                   {|var| Math.sqrt(var)},
+           boll60_high:    Cotcube::Indicators.calc(a: :sig60, b: :sma60_typ)    {|sig, typ| (typ + sig * bollinger_factor) rescue nil},
+           boll60_low:     Cotcube::Indicators.calc(a: :sig60, b: :sma60_typ)    {|sig, typ| (typ - sig * bollinger_factor) rescue nil}
+
+        }
+
+
+
         data.group_by { |x| x[:date] }.map do |k, v|
           v.map { |x| x.delete(:date) }
-          result << {
+          avg_bar = { 
             date: k,
-            volume: v.map { |x| x[:volume] }.reduce(:+),
-            oi: v.map { |x| x[:oi] }.reduce(:+)
+            contract: v.max_by{|x| x[:oi] }[:contract],
+            open: nil, high: nil, low: nil, close: nil,
+            volume:   v.map { |x| x[:volume] }.reduce(:+),
+            oi:       v.map { |x| x[:oi] }.reduce(:+),
           }
+
+          %i[ open high low close ].each do |ohlc|
+            avg_bar[ohlc] = (v.map{|x| x[ohlc].to_f * x[effective_selector] }.reduce(:+) / avg_bar[effective_selector]).round(rounding)
+          end
+          p avg_bar if debug
+          indicators.each do |k,v|
+            print format('%12s:  ', k.to_s) if debug
+            avg_bar[k] = v.call(avg_bar).round(rounding)
+            puts avg_bar[k] if debug
+          end
+          %i[tr atr5].each { |ind| 
+            avg_bar[ind]     = (avg_bar[ind] / sym[:ticksize]).round.to_i unless avg_bar[ind].nil?
+          }
+          result << avg_bar
           result.last[:contracts] = v
         end
         result
       end
-      constname = "CONTINUOUS_#{symbol}".to_sym
+      constname = "CONTINUOUS_#{symbol}#{selector.nil? ? '' : ('_' + selector.to_s)}".to_sym
       if rewriting or not  Cotcube::Bardata.const_defined?( constname)
         Cotcube::Bardata.const_set constname, loading.call
       end
@@ -277,7 +342,7 @@ module Cotcube
              }\tto #{format '%5d', ldays.max
              }: #{dfm.call(ldays.max)}".colorize(color)
              if debug || (color != :white)
-               puts output
+               puts output unless silent
                output_sent << "#{sym[:symbol]}#{month}" unless color == :white
              end
              early_year  ||= output
@@ -288,20 +353,22 @@ module Cotcube
                }\t#{v1.first[:date]
                } (#{format '%3d', Date.parse(v1.first[:date]).yday
               })\t#{Date.parse(v1.last[:date]).strftime('%a, %Y-%m-%d')
-               } (#{Date.parse(v1.last[:date]).yday})"
+               } (#{Date.parse(v1.last[:date]).yday})" unless silent
                # rubocop:enable Layout/ClosingParenthesisIndentation
              end
         end
       case output_sent.size
       when 0
-        puts "WARNING: No output was sent for symbol '#{sym[:symbol]}'.".colorize(:light_yellow)
-        puts "         Assuming late-year-processing.".light_yellow
-        puts early_year.light_green
+        unless silent
+          puts "WARNING: No output was sent for symbol '#{sym[:symbol]}'.".colorize(:light_yellow) 
+          puts "         Assuming late-year-processing.".light_yellow
+          puts early_year.light_green
+        end
       when 1
         # all ok
         true
       else
-        puts "Continuous table show #{output_sent.size} active contracts ( #{output_sent} ) for #{sym[:symbol]} ---------------"
+        puts "Continuous table show #{output_sent.size} active contracts ( #{output_sent} ) for #{sym[:symbol]} ---------------" unless silent
       end
       measuring.call("Finished processing")
       short ? output_sent : long_output
