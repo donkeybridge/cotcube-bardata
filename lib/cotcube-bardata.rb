@@ -11,6 +11,7 @@ require 'date' unless defined?(DateTime)
 require 'csv'  unless defined?(CSV)
 require 'yaml' unless defined?(YAML)
 require 'cotcube-helpers'
+require 'cotcube-indicators'
 require 'parallel'
 
 require_relative 'cotcube-bardata/constants'
