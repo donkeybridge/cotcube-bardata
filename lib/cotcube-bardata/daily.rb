@@ -61,7 +61,8 @@ module Cotcube
           today -= 1
         end
         eods.flatten!.map!{|x| x.tap {|y| %i[ volume_part oi_part ].map{|z| y.delete(z)} } }
-        eods.select{|x| x[:contract] == contract } 
+        binding.irb
+        eods.select!{|x| x[:contract] == "#{sym[:symbol]}#{contract}" } 
         eods.map!{|x| x.tap{|y| 
           y[:datetime] = timezone.parse(y[:date])
           y[:dist]     = ((y[:high] - y[:low]) / sym[:ticksize] ).to_i
