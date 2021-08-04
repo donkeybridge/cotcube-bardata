@@ -1,3 +1,6 @@
+## 0.1.15.1 (August 04, 2021)
+  - fixed license mismatch
+
 ## 0.1.15 (August 04, 2021)
   - daily.rb: added support to add eod data on incomplete dailies
   - adding dep: cotcube-indicators
