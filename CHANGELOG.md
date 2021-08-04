@@ -1,3 +1,14 @@
+## 0.1.15 (August 04, 2021)
+  - daily.rb: added support to add eod data on incomplete dailies
+  - adding dep: cotcube-indicators
+  - provide: new method :determine_significant_volume
+  - suggest: adding silence
+  - cached: Adding :dist
+  - daily: new method :determine_significant_volume
+  - added :dist generically to quarters
+  - trading_hours: added param to return headers only
+  - last_trade_date: Enabled caching instead of fetching each time
+
 ## 0.1.14 (May 07, 2021)
   - few changes in provide / cached / daily for a more straigtforward forcing of cache renewal
   - suggest: new method to suggest a contract for given symbol and date
