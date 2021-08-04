@@ -1,3 +1,6 @@
+## 0.1.15.3 (August 04, 2021)
+  - daily.rb: Hotfixing
+
 ## 0.1.15.2 (August 04, 2021)
   - fixed leftover debug setting
 
