@@ -129,7 +129,6 @@ module Cotcube
 
         end
 
-        binding.irb
         measuring.call("Finished retrieving dailies.")
         result = []
         rounding =  8 # sym[:format].split('.').last.to_i rescue 6
