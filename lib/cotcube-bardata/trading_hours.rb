@@ -12,14 +12,20 @@ module Cotcube
                       filter: ,
                       force_filter: false,  # with force_filter one would avoid falling back
                                             # to the contract_type based range set
+                      headers_only: false,  # return only headers instead of ranges
                       config: init, debug: false)
       return (0...24 * 7 * 3600) if filter.to_s =~ /24x7/
 
       prepare = lambda do |f|
-        CSV.read(f, converters: :numeric)
-           .map(&:to_a)
-           .tap { |x| x.shift unless x.first.first.is_a?(Numeric) }
-           .map { |x| (x.first...x.last) }
+        if headers_only
+          CSV.read(f)
+            .first
+        else
+          CSV.read(f, converters: :numeric)
+             .map(&:to_a)
+             .tap { |x| x.shift unless x.first.first.is_a?(Numeric) }
+             .map { |x| (x.first...x.last) }
+        end
       end
 
       sym = get_id_set(symbol: symbol, id: id)
