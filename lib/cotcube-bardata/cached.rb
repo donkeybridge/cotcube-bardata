@@ -40,12 +40,13 @@ module Cotcube
       quarters_file = "#{config[:data_path]}/quarters/#{sym[:id]}/#{contract[-3..]}.csv"
       if File.exist?(file) && (not force_update)
         puts "Working with existing #{file}, no update was forced" if debug
-        puts "    Using quarters from #{quarters_file}"
+        puts "    Using quarters from #{quarters_file}" if debug
         base = CSV.read(file, headers: headers).map do |x|
           x = x.to_h
           x[:datetime] = timezone.parse(x[:datetime])
           %i[open high low close].each { |z| x[z] = x[z].to_f.round(9) }
           x[:volume] = x[:volume].to_i
+          x[:dist]     = ((x[:high] - x[:low]) / sym[:ticksize] ).to_i
           x[:type]   = "#{filter.to_s.downcase}_day".to_sym
           x
         end
