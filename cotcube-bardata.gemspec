@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.description   = 'Functions to provide bardata; and some simple time series aggregations '
 
   spec.homepage      = "https://github.com/donkeybridge/#{spec.name}"
-  spec.license       = 'BSD-4-Clause'
+  spec.license       = 'BSD-3-Clause'
   spec.required_ruby_version = Gem::Requirement.new('~> 2.7')
 
   spec.metadata['homepage_uri'] = spec.homepage
