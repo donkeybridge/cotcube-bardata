@@ -1,3 +1,6 @@
+## 0.1.15.2 (August 04, 2021)
+  - fixed leftover debug setting
+
 ## 0.1.15.1 (August 04, 2021)
   - fixed license mismatch
 
