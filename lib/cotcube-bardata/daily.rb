@@ -10,8 +10,10 @@ module Cotcube
                       timezone: Time.find_zone('America/Chicago'),
                       keep_last: false,
                       add_eods: true,
+                      indicators: {},
                       config: init)
       contract = contract.to_s.upcase
+      rounding = 8
       unless contract.is_a?(String) && [3, 5].include?(contract.size)
         raise ArgumentError, "Contract '#{contract}' is bogus, should be like 'M21' or 'ESM21'"
       end
@@ -43,7 +45,10 @@ module Cotcube
       data = CSV.read(data_file, headers: %i[contract date open high low close volume oi]).map do |row|
         row = row.to_h
         row.each do |k, _|
-          row[k] = row[k].to_f if %i[open high low close].include? k
+          if %i[open high low close].include? k
+            row[k] = row[k].to_f
+            row[k] = (row[k] * sym[:bcf]).round(8) unless sym[:bcf] == 1.0
+          end
           row[k] = row[k].to_i if %i[volume oi].include? k
         end
         row[:datetime] = timezone.parse(row[:date])
@@ -57,20 +62,28 @@ module Cotcube
         today = Date.today
         eods = [ ]
         while today.strftime('%Y-%m-%d') > data.last[:date]
-          eods << provide_eods(symbol: sym[:symbol], dates: today, contracts_only: false)
+          eods << provide_eods(symbol: sym[:symbol], dates: today, contracts_only: false, quiet: true)
           today -= 1
         end
         eods.flatten!.map!{|x| x.tap {|y| %i[ volume_part oi_part ].map{|z| y.delete(z)} } }
-        binding.irb
         eods.select!{|x| x[:contract] == "#{sym[:symbol]}#{contract}" } 
         eods.map!{|x| x.tap{|y| 
+          if sym[:bcf] != 1.0
+            %i[open high low close].map{|k|
+               y[k] = (y[k] * sym[:bcf]).round(8)
+            }
+          end
           y[:datetime] = timezone.parse(y[:date])
           y[:dist]     = ((y[:high] - y[:low]) / sym[:ticksize] ).to_i
           y[:type]     = :eod
         } }
         data += eods.reverse
-
       end
+      data.map do |bar| 
+        indicators.each do |k,v|
+          bar[k] = v.call(bar).round(rounding)
+        end
+      end unless indicators.empty?
       if range.nil?
         data
       else
@@ -83,7 +96,7 @@ module Cotcube
 
     # reads all files in  bardata/daily/<id> and aggregates by date
     # (what is a pre-stage of a continuous based on daily bars)
-    def continuous(symbol: nil, id: nil, config: init, date: nil, measure: nil, force_rewrite: false, selector: nil, debug: false, add_eods: true)
+    def continuous(symbol: nil, id: nil, config: init, date: nil, measure: nil, force_rewrite: false, selector: nil, debug: false, add_eods: true, indicators: nil)
       raise ArgumentError, ':measure, if given, must be a Time object (e.g. Time.now)' unless [NilClass, Time].include? measure.class
       measuring = lambda {|c| puts "[continuous] Time measured until '#{c}': #{(Time.now.to_f - measure.to_f).round(2)}sec" unless measure.nil? }
 
@@ -100,7 +113,7 @@ module Cotcube
 
       # instead of using the provide_daily methods above, for this bulk operation a 'continuous.csv' is created
       # this boosts from 4.5sec to 0.3sec
-      rewriting = force_rewrite or not(File.exist?(c_file)) or (Time.now - File.mtime(c_file) > 8.days)
+      rewriting = (force_rewrite or not(File.exist?(c_file)) or (Time.now - File.mtime(c_file) > 8.days))
       if rewriting
         puts "In daily+continuous: Rewriting #{c_file} #{force_rewrite ? "forcibly" : "due to fileage"}.".light_yellow
         `rm #{c_file}; find #{id_path} | xargs cat 2>/dev/null | grep -v ',0,' | grep -v ',0$'| sort -t, -k2 | cut -d, -f1-8 | grep ',.*,' | uniq > #{c_file}`
@@ -114,20 +127,20 @@ module Cotcube
                 low:      row[4],
                 close:    row[5],
                 volume:   row[6].to_i,
-                oi:       row[7].to_i
+                oi:       row[7].to_i,
+                type:     :cont
           }
         end
         if add_eods
           today = Date.today
           eods = [ ]
           while today.strftime('%Y-%m-%d') > data.last[:date]
-            eods << provide_eods(symbol: symbol, dates: today, contracts_only: false)
+            eods << provide_eods(symbol: symbol, dates: today, contracts_only: false, quiet: true)
             today -= 1
           end
           eods.flatten!.map!{|x| x.tap {|y| %i[ volume_part oi_part ].map{|z| y.delete(z)} } }
           eods.delete_if { |elem|  elem.flatten.empty? }
           data += eods.reverse
-
         end
 
         measuring.call("Finished retrieving dailies.")
@@ -138,34 +151,7 @@ module Cotcube
           sma250_high: Cotcube::Indicators.sma(key: :high,    length: 250),
           sma250_low:  Cotcube::Indicators.sma(key: :low,     length: 250),
           sma250_typ:  Cotcube::Indicators.sma(key: :typical, length: 250), 
-          # sma60_typ:   Cotcube::Indicators.sma(key: :typical, length: short),
-          # tr:          Cotcube::Indicators.true_range,
-          # atr5:        Cotcube::Indicators.sma(key: :tr,    length: 5),
-          # dist_abs:    Cotcube::Indicators.calc(a: :sma250_high, b: :sma250_low, c: :high, d: :low) do |sma_high, sma_low, high, low| 
-          #  if high > sma_high
-          #    high - sma_high
-          #  elsif sma_low > low 
-          #    low - sma_low
-          #  else 
-          #    0
-          #  end
-          #end,
-          #dist_sma: Cotcube::Indicators.calc(a: :sma250_typ, b: :sma60_typ) do |sma250, sma60|
-          #  sma60 - sma250
-          #end,
-          #dist_index:     Cotcube::Indicators.index(key: :dist_abs, length: 60, abs: true),
-          #dev250_squared: Cotcube::Indicators.calc(a: :sma250_typ, b: :typical) {|sma, x| (sma - x) ** 2 },
-          #var250:         Cotcube::Indicators.sma(key: :dev250_squared, length: long),
-          #sig250:         Cotcube::Indicators.calc(a: :var250)                  {|var| Math.sqrt(var)},
-          #boll250_high:   Cotcube::Indicators.calc(a: :sig250, b: :sma250_typ)  {|sig, typ| (typ + sig * bollinger_factor) rescue nil},
-          #boll250_low:    Cotcube::Indicators.calc(a: :sig250, b: :sma250_typ)  {|sig, typ| (typ - sig * bollinger_factor) rescue nil},
-          #dev60_squared:  Cotcube::Indicators.calc(a: :sma60_typ, b: :typical)  {|sma, x| (sma - x) ** 2 },
-          #var60:          Cotcube::Indicators.sma(key: :dev60_squared, length: short),
-          #sig60:          Cotcube::Indicators.calc(a: :var60)                   {|var| Math.sqrt(var)},
-          #boll60_high:    Cotcube::Indicators.calc(a: :sig60, b: :sma60_typ)    {|sig, typ| (typ + sig * bollinger_factor) rescue nil},
-          #boll60_low:     Cotcube::Indicators.calc(a: :sig60, b: :sma60_typ)    {|sig, typ| (typ - sig * bollinger_factor) rescue nil}
-          dist: Cotcube::Indicators.calc(a: :high, b: :low, finalize: :to_i) {|high, low| ((high-low) / ticksize) }
-
+          dist: Cotcube::Indicators.calc(a: :high, b: :low, finalize: :to_i) {|high, low| ((high-low) / ticksize) },
         }
 
 
@@ -178,10 +164,13 @@ module Cotcube
             open: nil, high: nil, low: nil, close: nil,
             volume:   v.map { |x| x[:volume] }.reduce(:+),
             oi:       v.map { |x| x[:oi] }.reduce(:+),
+            type:     :cont_eod
           }
 
           %i[ open high low close ].each do |ohlc|
             avg_bar[ohlc] = (v.map{|x| x[ohlc].to_f * x[effective_selector] }.reduce(:+) / avg_bar[effective_selector]).round(rounding)
+            avg_bar[ohlc] = (avg_bar[ohlc] * sym[:bcf]).round(8) unless sym[:bcf] == 1.0
+
           end
           p avg_bar if debug
           indicators.each do |k,v|
@@ -327,17 +316,18 @@ module Cotcube
 
       ytoday = date.yday
       data = continuous_overview(id: id, selector: selector, filter: filter, human: false, config: init, measure: measure)
-        .reject { |k, _| k[-2..].to_i == date.year % 2000 }
+        .reject { |k, _| k[-2..].to_i >= date.year % 2000 }
         .group_by { |k, _| k[2] }
       measuring.call("Retrieved continous_overview")
       output_sent = []
       early_year=nil
       long_output = []
       data.keys.sort.each do |month|
-        current_long = { month: month }
         puts "Processing #{sym[:symbol]}#{month}" if debuglevel > 1
         v0 = data[month]
+        # ldays is the list of 'last days'
         ldays = v0.map { |_, v1| Date.parse(v1.last[:date]).yday }
+        # fdays is the list of 'first days'
         fdays = v0.map { |_, v1| Date.parse(v1.first[:date]).yday }.sort
         # if the last ml day nears the end of the year, we must fix
         ldays.map! { |x| x > 350 ? x - 366 : x } if ldays.min < 50
@@ -375,8 +365,8 @@ module Cotcube
              }: #{dfm.call(ldays.max)}".colorize(color)
              if debug || (color != :white)
                puts output unless silent
-               output_sent << "#{sym[:symbol]}#{month}" unless color == :white
              end
+             output_sent << "#{sym[:symbol]}#{month}" unless color == :white
              early_year  ||= output
              next if silent or not (debug and debuglevel >= 2) 
 
