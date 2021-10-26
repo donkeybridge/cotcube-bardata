@@ -1,3 +1,6 @@
+## 0.1.15.4 (October 26, 2021)
+  - daily: including the sourcing factor (:bcf) into provide_daily and continuous
+
 ## 0.1.15.3 (August 04, 2021)
   - daily.rb: Hotfixing
 
