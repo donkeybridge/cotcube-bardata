@@ -16,7 +16,7 @@ module Cotcube
         raise ArgumentError, "Contract '#{contract}' is bogus, should be like 'M21' or 'ESM21'"
       end
 
-      sym = get_id_set(symbol: symbol, id: id, contract: contract)
+      sym = Cotcube::Helpers.get_id_set(symbol: symbol, id: id, contract: contract)
 
       contract = contract[2..4] if contract.to_s.size == 5
       id = sym[:id]

@@ -28,7 +28,7 @@ module Cotcube
         end
       end
 
-      sym = get_id_set(symbol: symbol, id: id)
+      sym = Cotcube::Helpers.get_id_set(symbol: symbol, id: id)
 
       file = "#{config[:data_path]}/trading_hours/#{sym[:symbol]}_#{filter}.csv"
       puts "Trying to use #{file} for #{symbol} + #{filter}" if debug

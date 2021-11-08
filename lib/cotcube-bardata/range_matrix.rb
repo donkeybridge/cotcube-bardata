@@ -24,7 +24,7 @@ module Cotcube
     def range_matrix(symbol: nil, id: nil, base: nil, print: false, dim: 0.05, days_only: false, last_n: 60, &block)
       # rubocop:disable Style/MultilineBlockChain
       symbol ||= base.last[:contract][0..1] if id.nil?
-      sym = get_id_set(symbol: symbol, id: id)
+      sym = Cotcube::Helpers.get_id_set(symbol: symbol, id: id)
       source = {}
       target = {}
       if base.nil?

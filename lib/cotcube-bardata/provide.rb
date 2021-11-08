@@ -17,7 +17,7 @@ module Cotcube
                 force_update: false,
                 force_recent: false)
 
-      sym = get_id_set(symbol: symbol, id: id, contract: contract, config: config)
+      sym = Cotcube::Helpers.get_id_set(symbol: symbol, id: id, contract: contract, config: config)
 
       case interval
       when :quarters, :hours, :quarter, :hour

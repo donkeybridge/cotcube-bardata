@@ -30,7 +30,7 @@ module Cotcube
       end
 
       headers = %i[contract datetime open high low close volume]
-      sym      = get_id_set(symbol: symbol, id: id, contract: contract)
+      sym      = Cotcube::Helpers.get_id_set(symbol: symbol, id: id, contract: contract)
       contract = contract[-3..]
       dir      = "#{config[:data_path]}/cached/#{sym[:id]}_#{filter.to_s.downcase}"
       symlink  = "#{config[:data_path]}/cached/#{sym[:symbol]}_#{filter.to_s.downcase}"

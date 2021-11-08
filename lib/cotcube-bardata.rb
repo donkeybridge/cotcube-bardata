@@ -62,10 +62,6 @@ module Cotcube
                     :range_matrix,
                     # create an array of ranges based on specified source data
                     :trading_hours,
-                    # receive id / symbol information on an uncertain set of parameters
-                    # TODO: decommision sppearance of get_id_set and symbols in cotcube::bardata
-                    :get_id_set,
-                    :symbols,
                     #
                     :select_specific_date,
                     :extended_select_for_range,

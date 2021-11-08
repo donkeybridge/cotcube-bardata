@@ -4,7 +4,7 @@ module Cotcube
   # Missing top level documentation
   module Bardata
     def most_liquid_for(symbol: nil, id: nil, date: last_trade_date, config: init)
-      id = get_id_set(symbol: symbol, id: id, config: config)[:id]
+      id = Cotcube::Helpers.get_id_set(symbol: symbol, id: id, config: config)[:id]
       provide_eods(id: id, dates: date, contracts_only: true).first
     end
 
@@ -15,7 +15,7 @@ module Cotcube
                                     date: last_trade_date,
                                     filter: :volume_part,
                                     age: 1.hour)
-      sym  = get_id_set(symbol: symbol, id: id) if symbol || id
+      sym  = Cotcube::Helpers.get_id_set(symbol: symbol, id: id) if symbol || id
       # noinspection RubyScope
       eods = provide_eods(id: sym.nil? ? nil : sym[:id], config: config, dates: date, filter: filter)
       result = []
@@ -62,7 +62,7 @@ module Cotcube
       end
 
       symbol = contract[0..1] if contract.to_s.size == 5
-      sym = get_id_set(symbol: symbol, id: id, config: config) if symbol || id
+      sym = Cotcube::Helpers.get_id_set(symbol: symbol, id: id, config: config) if symbol || id
       # if no id can be clarified from given arguments, return all matching contracts from all available symbols
       # raise ArgumentError, "Could not guess :id or :symbol from 'contract: #{contract}', please clarify." if id.nil?
       raise ArgumentError, ':filter must be in [:volume_part, :oi_part]' unless %i[volume_part oi_part].include? filter

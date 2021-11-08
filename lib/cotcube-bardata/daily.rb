@@ -33,7 +33,7 @@ module Cotcube
         range = (range_begin..range_end)
       end
 
-      sym = get_id_set(symbol: symbol, id: id, contract: contract)
+      sym = Cotcube::Helpers.get_id_set(symbol: symbol, id: id, contract: contract)
       contract = contract[2..4] if contract.to_s.size == 5
       id = sym[:id]
       id_path   = "#{config[:data_path]}/daily/#{id}"
@@ -81,7 +81,8 @@ module Cotcube
       end
       data.map do |bar| 
         indicators.each do |k,v|
-          bar[k] = v.call(bar).round(rounding)
+          tmp = v.call(bar)
+          bar[k] = tmp.respond_to?(:round) ? tmp.round(rounding) : tmp
         end
       end unless indicators.empty?
       if range.nil?
@@ -101,7 +102,7 @@ module Cotcube
       measuring = lambda {|c| puts "[continuous] Time measured until '#{c}': #{(Time.now.to_f - measure.to_f).round(2)}sec" unless measure.nil? }
 
       measuring.call("Starting")
-      sym = get_id_set(symbol: symbol, id: id)
+      sym = Cotcube::Helpers.get_id_set(symbol: symbol, id: id)
       id  = sym[:id]
       symbol = sym[:symbol]
       ticksize = sym[:ticksize] 
@@ -175,7 +176,8 @@ module Cotcube
           p avg_bar if debug
           indicators.each do |k,v|
             print format('%12s:  ', k.to_s) if debug
-            avg_bar[k] = v.call(avg_bar).round(rounding)
+            tmp = v.call(avg_bar)
+            avg_bar[k] = tmp.respond_to?(:round) ? tmp.round(rounding) : tmp
             puts avg_bar[k] if debug
           end
           %i[tr atr5].each { |ind| 
@@ -236,7 +238,7 @@ module Cotcube
         %i[volume oi].include?(selector)
 
       measuring.call("Starting")
-      sym = get_id_set(symbol: symbol, id: id)
+      sym = Cotcube::Helpers.get_id_set(symbol: symbol, id: id)
       id  = sym[:id]
       # noinspection RubyNilAnalysis
       data = continuous(id: id, config: config, measure: measure).map do |x|
@@ -300,7 +302,7 @@ module Cotcube
         %i[volume oi].include?(selector)
 
       measuring.call("Entering function")
-      sym = get_id_set(symbol: symbol, id: id)
+      sym = Cotcube::Helpers.get_id_set(symbol: symbol, id: id)
       if %w[R6 BJ GE].include? sym[:symbol]
         puts "Rejecting to process symbol '#{sym[:symbol]}'.".light_red
         return []
