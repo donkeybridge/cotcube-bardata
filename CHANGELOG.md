@@ -1,3 +1,6 @@
+## 0.1.15.5 (November 08, 2021)
+  - decommissioned .get_id_set in favor of Cotcube::Helpers.get_id_set
+
 ## 0.1.15.4 (October 26, 2021)
   - daily: including the sourcing factor (:bcf) into provide_daily and continuous
 
