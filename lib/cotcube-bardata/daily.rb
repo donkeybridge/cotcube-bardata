@@ -198,6 +198,55 @@ module Cotcube
       date.nil? ? Cotcube::Bardata.const_get(constname).map{|z| z.dup } : Cotcube::Bardata.const_get(constname).find { |x| x[:date] == date }
     end
 
+    # the filter series is an indicator based on the Cotcube::Bardata.continuous of the asset price.
+    #   current default filter is the ema50
+    def filter_series(ema_length: 50, symbol: , print_range: nil)
+      ema_high_n = "ema#{ema_length}_high".to_sym
+      ema_low_n  = "ema#{ema_length}_low".to_sym
+      ema_filter = "ema#{ema_length}_filter".to_sym
+      indicators = {
+        ema_high_n => Cotcube::Indicators.ema(key: :high,     length: ema_length,  smoothing: 2),
+        ema_low_n  => Cotcube::Indicators.ema(key: :low,      length: ema_length,  smoothing: 2),
+        :tr        => Cotcube::Indicators.true_range,
+        :atr5      => Cotcube::Indicators.ema(key: :tr,       length: 5,           smoothing: 2),
+        ema_filter => Cotcube::Indicators.calc(a: :high,      b: :low,             c: :close,
+                                               d: ema_high_n, e: ema_low_n,        f: :atr5,
+                                               finalize: :to_i)  do |high, low, close, ema_high, ema_low, atr5|
+
+                                                  if    close >  ema_high and (low - ema_high).abs <= atr5 / 5.0; 3 # :bullish_tipped
+                                                  elsif   low >  ema_high and (low - ema_high).abs >= atr5 * 3.0; 5 # :bullish_away
+                                                  elsif   low >  ema_high and (low - ema_high).abs <= atr5 / 1.5; 2 # :bullish_nearby
+                                                  elsif   low >  ema_high;                                        4 # :bullish
+
+                                                  elsif close <  ema_low and (high - ema_low).abs <= atr5 / 5.0; -3 # :bearish_tipped
+                                                  elsif  high <  ema_low and (high - ema_low).abs >= atr5 * 3.0; -5 # :bearish_away
+                                                  elsif  high <  ema_low and (high - ema_low).abs <= atr5 / 1.5; -2 # :bearish_nearby
+                                                  elsif  high <  ema_low;                                        -4 # :bearish
+
+                                                  elsif close >= ema_high and (close - ema_high).abs > atr5 ;     2 # :bullish_closed
+                                                  elsif close <= ema_low  and (close - ema_low ).abs > atr5 ;    -2 # :bearish_closed
+                                                  elsif close >= ema_high;                                        1 # :bullish_weak
+                                                  elsif close <= ema_low;                                        -1 # :bearish_weak
+                                                  elsif close >  ema_low and close < ema_high;                    0 # :ambigue
+                                                  else
+                                                    raise RuntimeError, "Unconsidered Indicator value with #{high}, #{low}, #{close}, #{ema_high}, #{ema_low}, #{atr5}"
+
+                                                  end
+                                                end
+      }
+      filter = Cotcube::Bardata.continuous(symbol: symbol, indicators: indicators).
+        map{ |z| z[:datetime] = DateTime.parse(z[:date]); z[:datetime] += z[:datetime].wday == 5 ? 3 : 1; z.slice(:datetime, ema_filter) }.
+        group_by{ |z| z[:datetime] }.
+        map{ |k,v| [ k, v[0][ema_filter] ] }.
+        to_h.
+        tap{ |z| z.to_a[print_range].each { |v|
+          puts "#{v[0].strftime('%Y-%m-%d')
+            } : #{format '%2d', v[1]
+            }".colorize(v[1] > 3 ? :light_green : v[1] > 1 ? :green : v[1] < -3 ? :light_red : v[1] < -1 ? :red : :white )
+        } if print_range.is_a? Range
+      }
+    end
+
     def continuous_ml(symbol: nil, id: nil, base: nil)
       (base.nil? ? Cotcube::Bardata.continuous(symbol: symbol, id: id) : base).map do |x|
         x[:ml] = x[:contracts].max_by { |z| z[:volume] }[:contract]
