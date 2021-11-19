@@ -1,3 +1,6 @@
+## 0.1.15.6 (November 19, 2021)
+  - daily: added filter_series
+
 ## 0.1.15.5 (November 08, 2021)
   - decommissioned .get_id_set in favor of Cotcube::Helpers.get_id_set
 
