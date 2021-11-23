@@ -146,16 +146,12 @@ module Cotcube
 
         measuring.call("Finished retrieving dailies.")
         result = []
-        rounding =  8 # sym[:format].split('.').last.to_i rescue 6
+        rounding =  8
         indicators ||= {
-          typical:     Cotcube::Indicators.calc(a: :high, b: :low, c: :close) {|high, low, close| (high + low + close) / 3 },
-          sma250_high: Cotcube::Indicators.sma(key: :high,    length: 250),
-          sma250_low:  Cotcube::Indicators.sma(key: :low,     length: 250),
-          sma250_typ:  Cotcube::Indicators.sma(key: :typical, length: 250), 
-          dist: Cotcube::Indicators.calc(a: :high, b: :low, finalize: :to_i) {|high, low| ((high-low) / ticksize) },
+          tr:   Cotcube::Indicators.true_range,
+          atr5: Cotcube::Indicators.ema(key: :tr, length: 5),
+          dist: Cotcube::Indicators.calc(a: :high, b: :low, finalize: :to_i) {|high, low| ((high-low) / ticksize) }
         }
-
-
 
         data.group_by { |x| x[:date] }.map do |k, v|
           v.map { |x| x.delete(:date) }
@@ -180,9 +176,9 @@ module Cotcube
             avg_bar[k] = tmp.respond_to?(:round) ? tmp.round(rounding) : tmp
             puts avg_bar[k] if debug
           end
-          %i[tr atr5].each { |ind| 
-            avg_bar[ind]     = (avg_bar[ind] / sym[:ticksize]).round.to_i unless avg_bar[ind].nil?
-          }
+          #%i[tr atr5].each { |ind|
+          #  avg_bar[ind]     = (avg_bar[ind] / sym[:ticksize]).round.to_i unless avg_bar[ind].nil?
+          #}
           result << avg_bar
           result.last[:contracts] = v
         end
@@ -207,44 +203,46 @@ module Cotcube
       indicators = {
         ema_high_n => Cotcube::Indicators.ema(key: :high,     length: ema_length,  smoothing: 2),
         ema_low_n  => Cotcube::Indicators.ema(key: :low,      length: ema_length,  smoothing: 2),
+        # NOTE: TR / ATR5 are in default set of continuous
         :tr        => Cotcube::Indicators.true_range,
         :atr5      => Cotcube::Indicators.ema(key: :tr,       length: 5,           smoothing: 2),
         ema_filter => Cotcube::Indicators.calc(a: :high,      b: :low,             c: :close,
                                                d: ema_high_n, e: ema_low_n,        f: :atr5,
                                                finalize: :to_i)  do |high, low, close, ema_high, ema_low, atr5|
 
-                                                  if    close >  ema_high and (low - ema_high).abs <= atr5 / 5.0; 3 # :bullish_tipped
-                                                  elsif   low >  ema_high and (low - ema_high).abs >= atr5 * 3.0; 5 # :bullish_away
-                                                  elsif   low >  ema_high and (low - ema_high).abs <= atr5 / 1.5; 2 # :bullish_nearby
-                                                  elsif   low >  ema_high;                                        4 # :bullish
+                                                 if    close >  ema_high and (low - ema_high).abs <= atr5 / 5.0; 3 # :bullish_tipped
+                                                 elsif   low >  ema_high and (low - ema_high).abs >= atr5 * 3.0; 5 # :bullish_away
+                                                 elsif   low >  ema_high and (low - ema_high).abs <= atr5 / 1.5; 2 # :bullish_nearby
+                                                 elsif   low >  ema_high;                                        4 # :bullish
 
-                                                  elsif close <  ema_low and (high - ema_low).abs <= atr5 / 5.0; -3 # :bearish_tipped
-                                                  elsif  high <  ema_low and (high - ema_low).abs >= atr5 * 3.0; -5 # :bearish_away
-                                                  elsif  high <  ema_low and (high - ema_low).abs <= atr5 / 1.5; -2 # :bearish_nearby
-                                                  elsif  high <  ema_low;                                        -4 # :bearish
+                                                 elsif close <  ema_low and (high - ema_low).abs <= atr5 / 5.0; -3 # :bearish_tipped
+                                                 elsif  high <  ema_low and (high - ema_low).abs >= atr5 * 3.0; -5 # :bearish_away
+                                                 elsif  high <  ema_low and (high - ema_low).abs <= atr5 / 1.5; -2 # :bearish_nearby
+                                                 elsif  high <  ema_low;                                        -4 # :bearish
 
-                                                  elsif close >= ema_high and (close - ema_high).abs > atr5 ;     2 # :bullish_closed
-                                                  elsif close <= ema_low  and (close - ema_low ).abs > atr5 ;    -2 # :bearish_closed
-                                                  elsif close >= ema_high;                                        1 # :bullish_weak
-                                                  elsif close <= ema_low;                                        -1 # :bearish_weak
-                                                  elsif close >  ema_low and close < ema_high;                    0 # :ambigue
-                                                  else
-                                                    raise RuntimeError, "Unconsidered Indicator value with #{high}, #{low}, #{close}, #{ema_high}, #{ema_low}, #{atr5}"
+                                                 elsif close >= ema_high and (close - ema_high).abs > atr5 ;     2 # :bullish_closed
+                                                 elsif close <= ema_low  and (close - ema_low ).abs > atr5 ;    -2 # :bearish_closed
+                                                 elsif close >= ema_high;                                        1 # :bullish_weak
+                                                 elsif close <= ema_low;                                        -1 # :bearish_weak
+                                                 elsif close >  ema_low and close < ema_high;                    0 # :ambigue
+                                                 else
+                                                   raise RuntimeError, "Unconsidered Indicator value with #{high}, #{low}, #{close}, #{ema_high}, #{ema_low}, #{atr5}"
 
-                                                  end
-                                                end
+                                                 end
+                                               end
       }
       filter = Cotcube::Bardata.continuous(symbol: symbol, indicators: indicators).
         map{ |z| z[:datetime] = DateTime.parse(z[:date]); z[:datetime] += z[:datetime].wday == 5 ? 3 : 1; z.slice(:datetime, ema_filter) }.
         group_by{ |z| z[:datetime] }.
         map{ |k,v| [ k, v[0][ema_filter] ] }.
         to_h.
-        tap{ |z| z.to_a[print_range].each { |v|
-          puts "#{v[0].strftime('%Y-%m-%d')
-            } : #{format '%2d', v[1]
-            }".colorize(v[1] > 3 ? :light_green : v[1] > 1 ? :green : v[1] < -3 ? :light_red : v[1] < -1 ? :red : :white )
-        } if print_range.is_a? Range
-      }
+        tap{ |z|
+          z.to_a[print_range].each { |v|
+            puts "#{symbol} #{v[0].strftime('%Y-%m-%d')
+               }  #{format '%2d', v[1]
+               }".colorize(v[1] > 3 ? :light_green : v[1] > 1 ? :green : v[1] < -3 ? :light_red : v[1] < -1 ? :red : :white )
+          } if print_range.is_a? Range
+        }
     end
 
     def continuous_ml(symbol: nil, id: nil, base: nil)
@@ -370,12 +368,14 @@ module Cotcube
         .reject { |k, _| k[-2..].to_i >= date.year % 2000 }
         .group_by { |k, _| k[2] }
       measuring.call("Retrieved continous_overview")
-      output_sent = []
-      early_year=nil
       long_output = []
+
+      toydate = -> (z,y=2021) { str = "#{z>365 ? y+1 : y} #{z>365 ? z-365 : z}";  DateTime.strptime(str, '%Y %j').strftime('%Y-%m-%d') }
+
       data.keys.sort.each do |month|
         puts "Processing #{sym[:symbol]}#{month}" if debuglevel > 1
         v0 = data[month]
+
         # ldays is the list of 'last days'
         ldays = v0.map { |_, v1| Date.parse(v1.last[:date]).yday }
         # fdays is the list of 'first days'
@@ -384,6 +384,23 @@ module Cotcube
         ldays.map! { |x| x > 350 ? x - 366 : x } if ldays.min < 50
         fday  = fdays[fdays.size / 2]
         lavg  = ldays.reduce(:+) / ldays.size
+
+        # rubocop:disable Layout/ClosingParenthesisIndentation
+        current = {
+          month:    month,
+          contract: "#{sym[:symbol]}#{month}",
+          first_ml: fday,
+          last_min: ldays.min,
+          last_avg: lavg,
+          last_max: ldays.max,
+          until_start: fday - ytoday,
+          until_end:   ldays.min - ytoday
+        }
+        current[:until_end] += 365 if current[:until_end] - current[:until_start] < 0
+        current[:until_end] -= 365 if current[:until_end] > 365
+
+        long_output << current
+
         # a contract is proposed to use after fday - 1, but before ldays.min (green)
         # it is warned to user after fday - 1 but before lavg - 1            (red)
         # it is warned red >= lavg - 1 and <= lavg + 1
@@ -396,55 +413,42 @@ module Cotcube
                 else
                   :white
                 end
-        # rubocop:disable Layout/ClosingParenthesisIndentation
-        long_output << {
-          month:    month,
-          first_ml: fday,
-          last_min: ldays.min,
-          last_avg: lavg,
-          last_max: ldays.max }
-        output = "#{sym[:symbol]
-             }#{month
-             }\t#{format '%12s', sym[:type]
-             }\ttoday is #{ytoday
-             } -- median of first is #{fday
-             }\tlast ranges from #{format '%5d', ldays.min
-             }: #{dfm.call(ldays.min)
-             }\t#{format '%5d', lavg
-             }: #{dfm.call(lavg)
-             }\tto #{format '%5d', ldays.max
-             }: #{dfm.call(ldays.max)}".colorize(color)
-             if debug || (color != :white)
-               puts output unless silent
-             end
-             output_sent << "#{sym[:symbol]}#{month}" unless color == :white
-             early_year  ||= output
-             next if silent or not (debug and debuglevel >= 2) 
 
-             v0.each do |contract, v1|
-               puts "\t#{contract
-               }\t#{v1.first[:date]
-               } (#{format '%3d', Date.parse(v1.first[:date]).yday
-              })\t#{Date.parse(v1.last[:date]).strftime('%a, %Y-%m-%d')
-               } (#{Date.parse(v1.last[:date]).yday})" unless silent
-               # rubocop:enable Layout/ClosingParenthesisIndentation
-             end
+        output = "#{sym[:symbol]
+          }#{month
+          }\t#{format '%12s', sym[:type]
+          }\ttoday is #{ytoday
+          } -- median of first is #{fday
+          }\tlast ranges from #{format '%5d', ldays.min
+          }: #{dfm.call(ldays.min)
+          }\t#{format '%5d', lavg
+          }: #{dfm.call(lavg)
+          }\tto #{format '%5d', ldays.max
+          }: #{dfm.call(ldays.max)}".colorize(color)
+
+          if debug || (color != :white)
+            puts output unless silent
+          end
+          next if silent or not (debug and debuglevel >= 2)
+
+          v0.each do |contract, v1|
+            puts "\t#{contract
+             }\t#{v1.first[:date]
+             } (#{format '%3d', Date.parse(v1.first[:date]).yday
+            })\t#{Date.parse(v1.last[:date]).strftime('%a, %Y-%m-%d')
+             } (#{Date.parse(v1.last[:date]).yday})" unless silent
+             # rubocop:enable Layout/ClosingParenthesisIndentation
+          end
+
       end
-      case output_sent.size
-      when 0
-        unless silent
-          puts "WARNING: No output was sent for symbol '#{sym[:symbol]}'.".colorize(:light_yellow) 
-          puts "         Assuming late-year-processing.".light_yellow
-          puts early_year.light_green
-        end
-      when 1
-        # all ok
-        true
-      else
-        puts "Continuous table show #{output_sent.size} active contracts ( #{output_sent} ) for #{sym[:symbol]} ---------------" unless silent
+      long_output.sort_by!{|z| z[:until_end] + (z[:until_end].negative? ? 365 : 0)}
+
+      if short
+        return ([long_output.first] + long_output.select{|z| z[:until_start].positive? and z[:until_start] < 10 }).map{|z| z[:contract] }.uniq
       end
+
       measuring.call("Finished processing")
-      short ? output_sent : long_output
+      return long_output
     end
   end
 end

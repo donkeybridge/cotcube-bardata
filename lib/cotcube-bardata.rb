@@ -56,6 +56,8 @@ module Cotcube
                     :continuous_overview,
                     # provider estimation of current ML usability
                     :continuous_table,
+                    # provide a simple filter series
+                    :filter_series,
                     # provide the list of quarters, possibly as hours or days.
                     :provide_quarters,
                     # some statistics to estimate daily volatility of specific contract
