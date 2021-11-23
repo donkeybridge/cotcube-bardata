@@ -68,7 +68,7 @@ module Cotcube
       raise ArgumentError, ':filter must be in [:volume_part, :oi_part]' unless %i[volume_part oi_part].include? filter
 
       # noinspection RubyScope
-      ids = sym.nil? ? symbols.map { |x| x[:id] } : [sym[:id]]
+      ids = sym.nil? ? Cotcube::Helpers.symbols.map { |x| x[:id] } : [sym[:id]]
       dates = [dates] unless dates.is_a?(Array) || dates.nil?
 
       id_path_get = ->(local_id) { "#{config[:data_path]}/eods/#{local_id}" }
