@@ -1,3 +1,8 @@
+## 0.1.16 (November 23, 2021)
+  - bin/eod.rb: little helper to display eod data in bash resp. in xinetdhttpservice
+  - eods.rb: minor change to adapt move of symbols to Helpers
+  - daily.rb: in continuous, changed default indicators to %i[ tr atr5 dist ]
+
 ## 0.1.15.6 (November 19, 2021)
   - daily: added filter_series
 
