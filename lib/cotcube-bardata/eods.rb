@@ -78,12 +78,14 @@ module Cotcube
         # l_symbol     = l_sym[:symbol]
         id_path    = id_path_get.call(i)
         data_file  = "#{id_path}/#{d}.csv"
+        current_sym =  Cotcube::Helpers.get_id_set(id: i, config: config)
         raise "No data found for requested :id (#{id_path} does not exist)" unless Dir.exist?(id_path)
 
         unless File.exist?(data_file)
           unless quiet
-            puts 'WARNING: No data found for requested id/symbol'\
-            " #{id}/#{symbol} in #{id_path} for #{d}.".colorize(:light_yellow)
+            puts 'WARNING: No data found for requested symbol'\
+              " #{current_sym[:symbol]} in #{id_path} for #{d}.".colorize(:light_yellow)
+
           end
           return []
         end

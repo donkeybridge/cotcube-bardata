@@ -116,7 +116,7 @@ module Cotcube
       # this boosts from 4.5sec to 0.3sec
       rewriting = (force_rewrite or not(File.exist?(c_file)) or (Time.now - File.mtime(c_file) > 8.days))
       if rewriting
-        puts "In daily+continuous: Rewriting #{c_file} #{force_rewrite ? "forcibly" : "due to fileage"}.".light_yellow
+        puts "In daily+continuous: Rewriting #{c_file} #{force_rewrite ? "forcibly" : "due to fileage"}.".light_yellow if debug
         `rm #{c_file}; find #{id_path} | xargs cat 2>/dev/null | grep -v ',0,' | grep -v ',0$'| sort -t, -k2 | cut -d, -f1-8 | grep ',.*,' | uniq > #{c_file}`
       end
       loading = lambda do
