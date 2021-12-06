@@ -1,3 +1,9 @@
+## 0.1.17 (December 06, 2021)
+  - changed parameter for building of continuous (in daily.rb)
+  - added bin/intra + symbols. improved bin/daily
+  - bin/*: created (sym, daily) and improved (eod) cmd wrappers
+  - daily.rb: improved silence in .continuous
+
 ## 0.1.16 (November 23, 2021)
   - bin/eod.rb: little helper to display eod data in bash resp. in xinetdhttpservice
   - eods.rb: minor change to adapt move of symbols to Helpers
