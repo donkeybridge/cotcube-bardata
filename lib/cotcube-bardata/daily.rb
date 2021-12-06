@@ -394,7 +394,7 @@ module Cotcube
           last_avg: lavg,
           last_max: ldays.max,
           until_start: fday - ytoday,
-          until_end:   ldays.min - ytoday
+          until_end:   lavg - ytoday
         }
         current[:until_end] += 365 if current[:until_end] - current[:until_start] < 0
         current[:until_end] -= 365 if current[:until_end] > 365
