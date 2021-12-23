@@ -1,3 +1,7 @@
+## 0.1.18 (December 23, 2021)
+  - gemspec: raised activesupport to v7
+  - daily: added check for valid/allowed month pattern in continuous_overview
+
 ## 0.1.17 (December 06, 2021)
   - changed parameter for building of continuous (in daily.rb)
   - added bin/intra + symbols. improved bin/daily
