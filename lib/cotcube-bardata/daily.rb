@@ -7,7 +7,7 @@ module Cotcube
     def provide_daily(contract:, # rubocop:disable Metrics/ParameterLists
                       symbol: nil, id: nil,
                       range: nil,
-                      timezone: Time.find_zone('America/Chicago'),
+                      timezone: Cotcube::Helpers::CHICAGO,
                       keep_last: false,
                       add_eods: true,
                       indicators: {},
@@ -29,7 +29,7 @@ module Cotcube
 
       unless range.nil?
         range_begin = range.begin.nil? ? nil : timezone.parse(range.begin.to_s)
-        range_end   = range.end.nil? ? nil : timezone.parse(range.end.to_s)
+        range_end   = range.end.nil?   ? nil : timezone.parse(range.  end.to_s)
         range = (range_begin..range_end)
       end
 
@@ -366,6 +366,7 @@ module Cotcube
       ytoday = date.yday
       data = continuous_overview(id: id, selector: selector, filter: filter, human: false, config: init, measure: measure)
         .reject { |k, _| k[-2..].to_i >= date.year % 2000 }
+        .select { |k, _| sym[:months].chars.include? k[2] }
         .group_by { |k, _| k[2] }
       measuring.call("Retrieved continous_overview")
       long_output = []
