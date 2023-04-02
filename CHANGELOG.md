@@ -1,3 +1,6 @@
+## 0.2.0 (April 02, 2023)
+  - switching to FreeBSD base and ruby 3.2.2
+
 ## 0.1.18 (December 23, 2021)
   - gemspec: raised activesupport to v7
   - daily: added check for valid/allowed month pattern in continuous_overview
