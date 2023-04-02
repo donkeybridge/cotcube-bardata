@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
 
   spec.homepage      = "https://github.com/donkeybridge/#{spec.name}"
   spec.license       = 'BSD-3-Clause'
-  spec.required_ruby_version = Gem::Requirement.new('~> 2.7')
+  spec.required_ruby_version = Gem::Requirement.new('~> 3.2')
 
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = spec.homepage
